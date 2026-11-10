@@ -24,6 +24,15 @@ class ModelSpec(_Strict):
     training_cutoff: str | None = None
     notes: str = ""
 
+    # USD per million (input, output) tokens. Overrides the table in pricing.py, so a model it
+    # does not list (for example one served through openai_compatible) can be estimated and capped.
+    price_usd_per_mtok: tuple[float, float] | None = None
+
+    # openai_compatible only: the environment variable holding the API key, and the name of the
+    # reply-length parameter (OpenAI's current models take max_completion_tokens).
+    api_key_env: str | None = None
+    max_tokens_param: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"
+
     @model_validator(mode="after")
     def _sampling_supported(self) -> ModelSpec:
         if self.provider == "anthropic" and self.sampling:
@@ -32,7 +41,27 @@ class ModelSpec(_Strict):
                 f"({', '.join(sorted(self.sampling))}); remove `sampling` (variability is set "
                 "by the platform defaults and the pinned effort)"
             )
+        if self.provider == "openai_compatible" and self.effort is not None:
+            raise ValueError(
+                f"model {self.id!r}: `effort` is sent only to Claude models and would be ignored "
+                "here; leave it unset (the provider's default applies and is recorded)"
+            )
+        if self.provider != "openai_compatible" and (
+            self.api_key_env is not None or self.max_tokens_param != "max_tokens"
+        ):
+            raise ValueError(
+                f"model {self.id!r}: api_key_env and max_tokens_param apply to openai_compatible "
+                "models only"
+            )
         return self
+
+    @property
+    def key_env(self) -> str | None:
+        if self.provider == "anthropic":
+            return "ANTHROPIC_API_KEY"
+        if self.provider == "openai_compatible":
+            return self.api_key_env or "OPENAI_COMPATIBLE_API_KEY"
+        return None
 
 
 class TaskSpec(_Strict):
@@ -158,6 +187,16 @@ class AnalysisSpec(_Strict):
     margin_proportion: float = 0.10
     margin_cohens_h: float = 0.20
     margin_smd: float = 0.20
+    # joint: a study counts as reproduced only if its effect AND every condition level are each
+    # equivalent (intersection-union test; one claim per model and study). effect: the effect
+    # alone, under which a model can match a gap while missing both levels.
+    primary_test: Literal["joint", "effect"] = "joint"
+    # Equivalence within a margin does not show that the model has an effect: when the human
+    # effect is itself near `margin_cohens_h`, a model with a much weaker effect (or none) can be
+    # "equivalent". With this on, the primary claim also needs the model's own effect to be
+    # distinguishable from zero in the direction of the human effect (one more component of the
+    # intersection-union test).
+    primary_requires_effect: bool = False
     multiple_comparisons: Literal["holm", "none"] = "holm"
     bootstrap_iterations: int = 5000
 

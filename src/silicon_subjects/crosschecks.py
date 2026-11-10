@@ -202,6 +202,103 @@ def ml1_workbook_sites(c: _Ctx) -> tuple[bool, str]:
     )
 
 
+# Many Labs 1 allowed/forbidden (second hold-out). Sealed: messages carry sample sizes only.
+_AF = {"forbid": ("1", "allowedforbiddena"), "allow": ("0", "allowedforbiddenb")}
+
+
+def ml1_af_mapping(c: _Ctx) -> tuple[bool, str]:
+    d = c.table("ml1_cleaned_af")
+    g = d["allowedforbiddenGroup"]
+    a, b = d["allowedforbiddena"], d["allowedforbiddenb"]
+    answered = a.notna() | b.notna()
+    item = a.where(a.notna(), b)
+    cols = ["allowedforbiddenGroup", "allowedforbiddena", "allowedforbiddenb"]
+    ok, why = _all(
+        {
+            "version code is 0 or 1 on every row": bool(g.isin(["0", "1"]).all()),
+            "no row answered both versions": not bool((a.notna() & b.notna()).any()),
+            "forbid item <-> code 1, allow item <-> code 0": bool(
+                ((a.notna() & (g == "1")) | (b.notna() & (g == "0")))[answered].all()
+            ),
+            "item codes are 1 or 2": bool(item[answered].isin(["1", "2"]).all()),
+            "no replacement characters in the columns used": not bool(
+                d[cols].apply(lambda s: s.str.contains("�", na=False)).any().any()
+            ),
+        }
+    )
+    n = {k: int((answered & (g == code)).sum()) for k, (code, _) in _AF.items()}
+    return ok, (
+        f"{int(answered.sum())} responders (forbid {n['forbid']}, allow {n['allow']}) and "
+        f"{int((~answered).sum())} assigned non-responders: version code 1 = item "
+        "allowedforbiddena (forbid wording), 0 = allowedforbiddenb (allow wording); answers "
+        "coded 1/2 (outcomes sealed)"
+        if ok
+        else why
+    )
+
+
+_AF_WORKBOOK = ("site", "allow_yes", "allow_no", "forbid_yes", "forbid_no", "no_response")
+
+
+def _af_counts(d: pd.DataFrame) -> dict[str, int]:
+    g = d["allowedforbiddenGroup"]
+    out = {}
+    for cond, (code, col) in _AF.items():
+        for label, value in (("yes", "1"), ("no", "2")):
+            out[f"{cond}_{label}"] = int(((g == code) & (d[col] == value)).sum())
+    answered = d["allowedforbiddena"].notna() | d["allowedforbiddenb"].notna()
+    out["no_response"] = int((~answered).sum())
+    return out
+
+
+def ml1_af_workbook(c: _Ctx) -> tuple[bool, str]:
+    import warnings
+
+    import openpyxl
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        wb = openpyxl.load_workbook(c.path("ml1_workbook"), read_only=True, data_only=True)
+        rows = [
+            r[:6]
+            for r in wb["Allowed_forbidden"].iter_rows(values_only=True)
+            if r and r[0] is not None
+        ]
+        wb.close()
+    header = [str(h) for h in rows[0][1:5]]
+    expected = [
+        "Count (Yes, allow)",
+        "Count (No, do not allow)",
+        "Count (Yes, forbid)",
+        "Count (No, do not forbid)",
+    ]
+    sheet = pd.DataFrame(rows[1:], columns=list(_AF_WORKBOOK))
+    overall = sheet[sheet["site"] == "Overall:"].iloc[0]
+    sites = sheet[~sheet["site"].isin(["Overall:", "Sum across samples:"])].set_index("site")
+    d = c.table("ml1_cleaned_af")
+    mine = pd.DataFrame({site: _af_counts(g) for site, g in d.groupby("referrer")}).T
+    total = mine.sum()
+    cols = list(_AF_WORKBOOK[1:])
+    same_sites = set(sites.index) == set(mine.index)
+    ok, why = _all(
+        {
+            "sheet headers are allow yes/no, forbid yes/no": header == expected,
+            "same 36-site list": same_sites and len(sites) == 36,
+            "every site x 5 cells equal": same_sites
+            and bool(
+                (sites[cols].astype(int) == mine.loc[sites.index, cols].astype(int)).all().all()
+            ),
+            "overall row equal": all(int(overall[k]) == int(total[k]) for k in cols),
+        }
+    )
+    return ok, (
+        f"{len(sites)} sites x 5 cells and the overall row equal the ML1 analysts' "
+        "Allowed_forbidden sheet (MLforR.xlsx); values sealed"
+        if ok
+        else why
+    )
+
+
 def _hauser_items(h: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series]:
     gg = h["factor"] == "GreaterGood"
     return gg, h["haus3.1"].where(gg, h["haus4.1"]), h["haus4.1"].where(gg, h["haus3.1"])
@@ -418,6 +515,8 @@ STATIC_CHECKS: list[tuple[str, tuple[str, ...], Check]] = [
     ("ml1_site_codes", ("ml1_cleaned",), ml1_site_codes),
     ("ml1_berkeley_counts", ("ml1_cleaned", "ml1_berkeley"), ml1_berkeley_counts),
     ("ml1_workbook_sites", ("ml1_cleaned", "ml1_workbook"), ml1_workbook_sites),
+    ("ml1_af_mapping", ("ml1_cleaned_af",), ml1_af_mapping),
+    ("ml1_af_workbook", ("ml1_cleaned_af", "ml1_workbook"), ml1_af_workbook),
     ("ml2_hauser4_mapping", ("ml2_hauser4_clean",), ml2_hauser4_mapping),
     ("ml2_hauser4_results", ("ml2_hauser4_clean", "ml2_hauser4_results"), ml2_hauser4_results),
     ("ml2_hauser4_claims", ("ml2_hauser4_clean", "ml2_hauser4_results"), ml2_hauser4_claims),

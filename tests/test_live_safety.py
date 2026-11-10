@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
@@ -106,6 +107,50 @@ def test_budget_stops_starting_new_trials(demo_cfg: StudyConfig) -> None:
     assert rep.pending == len(trials) - 3
 
 
+def test_budget_counts_what_earlier_invocations_of_the_run_spent(demo_cfg: StudyConfig) -> None:
+    cfg = _priced(
+        demo_cfg.model_copy(
+            update={"runner": demo_cfg.runner.model_copy(update={"concurrency": 1})}
+        )
+    )
+    r, trials = _runner(cfg, Flaky(0, None), max_cost_usd=0.05)
+    assert asyncio.run(r.run(trials, limit=10)).completed == 3
+
+    # Resuming with the same cap starts nothing: the run has already spent more than the cap.
+    r, _ = _runner(cfg, Flaky(0, None), max_cost_usd=0.05)
+    rep = asyncio.run(r.run(trials, limit=10))
+    assert rep.completed == 0 and rep.skipped_for_budget == 10
+    assert rep.previously_completed == 3 and rep.spent_usd == pytest.approx(0.072)
+
+    # A higher cap continues from the recorded spend, not from zero.
+    r, _ = _runner(cfg, Flaky(0, None), max_cost_usd=0.10)
+    rep = asyncio.run(r.run(trials, limit=10))
+    assert rep.completed == 2 and rep.spent_usd == pytest.approx(0.12)
+
+    # A failed attempt's tokens were paid for too, and are counted once.
+    r, _ = _runner(cfg, Flaky(1, None), max_cost_usd=1.0, retry_delay=lambda a: 0.0)
+    rep = asyncio.run(r.run(trials, limit=1))
+    assert rep.completed == 1 and rep.spent_usd == pytest.approx(0.144)
+
+
+def test_budget_refuses_a_run_whose_earlier_spend_is_unknown(demo_cfg: StudyConfig) -> None:
+    cfg = _priced(demo_cfg)
+    r, trials = _runner(cfg, Flaky(0, None))
+    assert asyncio.run(r.run(trials, limit=1)).spent_usd == pytest.approx(0.024)
+    # A record written before costs were recorded: tokens were used, their cost is unknown.
+    path = r.paths.trials
+    record = json.loads(path.read_text())
+    del record["cost_usd"]
+    path.write_text(json.dumps(record) + "\n")
+
+    r, _ = _runner(cfg, Flaky(0, None))
+    assert asyncio.run(r.run(trials, limit=0)).spent_usd is None
+    r, _ = _runner(cfg, Flaky(0, None), max_cost_usd=1.0)
+    with pytest.raises(ValueError, match="cannot be enforced"):
+        asyncio.run(r.run(trials, limit=1))
+    assert len(path.read_text().splitlines()) == 1
+
+
 def test_budget_requires_known_prices(demo_cfg: StudyConfig) -> None:
     unpriced = demo_cfg.model_copy(
         update={
@@ -188,6 +233,16 @@ def test_doctor_detects_placeholders_and_missing_data(demo_cfg: StudyConfig) -> 
     _, out = _doctor(demo_cfg.root / "configs" / "demo.yaml")
     assert "stimuli has TODO placeholders" in out
     assert "no human data for: base" in out
+
+
+def test_doctor_blocks_stimuli_not_verified_against_their_source(demo_cfg: StudyConfig) -> None:
+    _, out = _doctor(demo_cfg.root / "configs" / "demo.yaml")
+    assert "FAIL  task framing: stimuli not marked verified against their source" in out
+    stim = demo_cfg.root / "data" / "stimuli" / "framing.yaml"
+    stim.write_text(stim.read_text().replace("verified: false", "verified: true", 1))
+    _, out = _doctor(demo_cfg.root / "configs" / "demo.yaml")
+    assert "task framing: stimuli not marked verified" not in out
+    assert "FAIL  task obedience: stimuli not marked verified against their source" in out
 
 
 def test_doctor_requires_credentials_for_live_models(
@@ -353,3 +408,168 @@ def test_repository_lock_pins_every_declared_dependency() -> None:
     names = {prereg._norm_dist(re.split(r"[<>=!~\[ ;]", d, maxsplit=1)[0]) for d in declared}
     assert names <= pinned, names - pinned
     assert "--hash=sha256:" in text
+
+
+def test_config_price_makes_an_unlisted_model_cappable(demo_cfg: StudyConfig) -> None:
+    from silicon_subjects import pricing
+
+    priced = demo_cfg.model_copy(
+        update={
+            "models": [
+                m.model_copy(
+                    update={"model": f"local-model-{i}", "price_usd_per_mtok": (4.0, 20.0)}
+                )
+                for i, m in enumerate(demo_cfg.models)
+            ]
+        }
+    )
+    assert pricing.price_for(priced.models[0]) == (4.0, 20.0)
+    assert pricing.cost_for(priced.models[0], 1000, 1000) == pytest.approx(0.024)
+    r, trials = _runner(
+        priced.model_copy(update={"runner": priced.runner.model_copy(update={"concurrency": 1})}),
+        Flaky(0, None),
+        max_cost_usd=0.05,
+    )
+    rep = asyncio.run(r.run(trials, limit=10))
+    assert rep.completed == 3 and rep.skipped_for_budget == 7
+
+
+def test_records_say_whether_the_seed_reached_the_model(demo_cfg: StudyConfig) -> None:
+    import json
+
+    from silicon_subjects.config import ModelSpec
+    from silicon_subjects.providers import seed_is_sent
+
+    assert not seed_is_sent(ModelSpec(id="a", provider="anthropic", model="claude-opus-5-5"))
+    assert seed_is_sent(ModelSpec(id="o", provider="openai_compatible", model="x", base_url="u"))
+    real = build_tasks(demo_cfg)
+    sets = personas.load_sets(demo_cfg)
+    trials = design.build_manifest(demo_cfg, real, sets)
+    r = runner.Runner(
+        demo_cfg,
+        real,
+        personas.all_personas(sets),
+        demo_cfg.root / "results" / "run",
+        prereg_hash=None,
+        confirmatory=False,
+        providers={m.id: MockProvider(m) for m in demo_cfg.models},
+    )
+    asyncio.run(r.run(trials, limit=2))
+    run = demo_cfg.root / "results" / "run"
+    manifest = json.loads((run / "manifest.json").read_text())
+    assert manifest["seed_sent_to_provider"] == {m.id: True for m in demo_cfg.models}
+    rec = json.loads((run / "trials.jsonl").read_text().splitlines()[0])
+    assert rec["generation"]["seed_sent"] is True
+
+
+def test_doctor_flags_single_developer_model_sets(demo_cfg: StudyConfig) -> None:
+    from silicon_subjects import doctor
+
+    live = demo_cfg.model_copy(
+        update={"models": [m.model_copy(update={"provider": "anthropic"}) for m in demo_cfg.models]}
+    )
+    checks = {c.item: c for c in doctor.run(live)}
+    assert checks["model diversity"].level == "WARN"
+    assert "model diversity" not in {c.item for c in doctor.run(demo_cfg)}
+
+
+def _openai_spec(**kw: Any) -> Any:
+    from silicon_subjects.config import ModelSpec
+
+    return ModelSpec(
+        id="gpt",
+        provider="openai_compatible",
+        base_url="https://api.example.test/v1",
+        model="gpt-6.1-sol",
+        api_key_env="OPENAI_API_KEY",
+        max_tokens=16000,
+        max_tokens_param="max_completion_tokens",
+        **kw,
+    )
+
+
+def _fake_openai(spec: Any, reply: dict[str, Any], seen: list[Any]) -> Any:
+    import httpx
+
+    from silicon_subjects.providers.openai_compatible import OpenAICompatibleProvider
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json=reply)
+
+    p = OpenAICompatibleProvider(spec, 5)
+    headers = dict(p._client.headers)
+    p._client = httpx.AsyncClient(
+        base_url=spec.base_url, headers=headers, transport=httpx.MockTransport(handler)
+    )
+    return p
+
+
+def test_openai_provider_uses_the_configured_key_and_token_parameter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import json
+
+    from silicon_subjects.providers.base import ChatMessage
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.delenv("OPENAI_COMPATIBLE_API_KEY", raising=False)
+    seen: list[Any] = []
+    reply = {
+        "model": "gpt-6.1-sol-2026-09-01",
+        "choices": [{"message": {"content": "CHOICE: A"}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 3},
+    }
+    p = _fake_openai(_openai_spec(), reply, seen)
+    comp = asyncio.run(p.complete("sys", [ChatMessage("user", "hi")], seed=7))
+    body = json.loads(seen[0].content)
+    assert seen[0].url.path == "/v1/chat/completions"
+    assert seen[0].headers["authorization"] == "Bearer sk-test"
+    assert body["max_completion_tokens"] == 16000 and "max_tokens" not in body
+    assert body["seed"] == 7 and comp.text == "CHOICE: A" and not comp.platform_refusal
+
+
+def test_openai_refusal_field_is_a_platform_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
+    from silicon_subjects.providers.base import ChatMessage
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    reply = {
+        "model": "gpt-6.1-sol",
+        "choices": [
+            {
+                "message": {"content": None, "refusal": "I can't help with that."},
+                "finish_reason": "stop",
+            }
+        ],
+    }
+    p = _fake_openai(_openai_spec(), reply, [])
+    comp = asyncio.run(p.complete("sys", [ChatMessage("user", "hi")], seed=1))
+    assert comp.platform_refusal and comp.text == "I can't help with that."
+
+
+def test_model_options_are_checked_against_the_provider() -> None:
+    from pydantic import ValidationError
+
+    from silicon_subjects.config import ModelSpec
+
+    with pytest.raises(ValidationError, match="effort"):
+        _openai_spec(effort="medium")
+    with pytest.raises(ValidationError, match="openai_compatible models only"):
+        ModelSpec(id="c", provider="anthropic", model="claude-opus-5-5", api_key_env="X")
+    assert _openai_spec().key_env == "OPENAI_API_KEY"
+    default = ModelSpec(id="o", provider="openai_compatible", model="m", base_url="u")
+    assert default.key_env == "OPENAI_COMPATIBLE_API_KEY"
+
+
+def test_doctor_requires_each_providers_key(
+    demo_cfg: StudyConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from silicon_subjects import doctor
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    cfg = demo_cfg.model_copy(update={"models": [*demo_cfg.models, _openai_spec()]})
+    creds = [c for c in doctor.run(cfg) if c.item == "credentials"]
+    assert any(c.level == "FAIL" and "OPENAI_API_KEY not set for gpt" in c.detail for c in creds)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    creds = [c for c in doctor.run(cfg) if c.item == "credentials"]
+    assert any(c.level == "PASS" and "OPENAI_API_KEY found" in c.detail for c in creds)

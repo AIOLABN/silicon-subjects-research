@@ -2,47 +2,76 @@ study_id: fyt3-silicon-subjects
 seed: 20261012
 
 models:
+  # Training cutoffs from Anthropic's model documentation (month precision).
   - id: opus55
     provider: anthropic
     model: claude-opus-5-5
     max_tokens: 16000
     effort: medium
-    training_cutoff: null
+    training_cutoff: "2026-06"
   - id: sonnet55
     provider: anthropic
     model: claude-sonnet-5-5
     max_tokens: 16000
     effort: medium
-    training_cutoff: null
+    training_cutoff: "2026-06"
+  # A model from another developer, so agreement between models is not one developer's training
+  # and safety tuning twice. The pilot checks that it accepts `seed` and strict JSON-schema
+  # output on Chat Completions. Its reasoning effort is OpenAI's default (`effort` is sent only
+  # to Claude models).
+  - id: gpt61sol
+    provider: openai_compatible
+    base_url: https://api.openai.com/v1
+    model: gpt-6.1-sol
+    api_key_env: OPENAI_API_KEY
+    max_tokens: 16000
+    max_tokens_param: max_completion_tokens
+    price_usd_per_mtok: [2.0, 10.0]   # standard API pricing, input, output
+    training_cutoff: "2026-04-30"
 
 tasks:
   - id: framing
     split: development
     exposure: >-
-      The framing materials and published direction of the effect were known during prompt design. The human counts were subsequently imported from the Many Labs 1 participant data.
+      The Many Labs 1 framing materials and published effect direction were known while the prompts and paraphrases were written. Human counts have since been imported and cross-checked.
     kind: framing
     stimuli: data/stimuli/framing.yaml
     benchmark: data/benchmarks/framing_manylabs1.yaml
     counterbalance_option_order: true
     materials_first_public: "1981-01-30"
+    # Development study: its human results have been seen and cited, so agreement with it is a
+    # check of the setup, not a confirmatory test (`sim doctor` enforces this).
+    confirmatory_test: false
   - id: obedience
     split: development
     exposure: >-
-      Burger's published percentages (70.0% base, 63.3% modeled refusal) informed the 150-volt endpoint, inclusion of the second condition and the power analysis.
+      Burger's (2009) published percentages (70.0% base, 63.3% modeled refusal) informed the design: the 150-volt endpoint, the second condition and the power analysis. Not untouched.
     kind: obedience
     stimuli: data/stimuli/obedience.yaml
     benchmark: data/benchmarks/obedience_burger2009.yaml
     materials_first_public: "2009-01-01"
     confirmatory_test: false
+    forecast_extension: true   # cheap population forecasts alongside the role-play
   - id: holdout
     split: evaluation
     exposure: >-
-      The published whole-percent permissibility rates and sample size were known before freezing. The 2007 paper reports the original percentages and supplied the stimuli. Pass/fail checks verified the replication without displaying individual outcomes. The imported benchmark is sealed. The reported values did not inform prompt, persona, model or analysis choices. The public studies may appear in model training data, so the design includes contamination probes.
+      Many Labs 2 Hauser.4 is the evaluation study. Before freezing, published whole-percent permissibility rates and N were known during study planning, and the 2007 paper, which reports the original percentages, was consulted to extract the stimuli. Participant-level outcomes were not displayed: reproduction of the published results was verified with pass/fail checks only, and the imported benchmark is sealed. No prompt, persona, model or analysis decision used these numbers. The study and its materials are public (2007 paper, 2018 replication), so they may be in model training data; contamination probes are required and the result must be read with that caveat.
     kind: vignette
     stimuli: data/stimuli/trolley_hauser2007.yaml
     benchmark: data/benchmarks/holdout_hauser4.yaml
     counterbalance_option_order: true
     materials_first_public: "2007-01-01"
+  # A second evaluation study, so that a claim to generalize does not rest on one study, and a
+  # different kind of judgment (a political attitude question rather than a moral dilemma).
+  - id: allowed_forbidden
+    split: evaluation
+    exposure: >-
+      Many Labs 1 allowed/forbidden (Rugg, 1941 wording) was added as a second evaluation study after the framing and hold-out designs were set. The classic finding and its direction (people "not forbid" more readily than they "allow") are widely published and were known when it was chosen, as was ML1's report that it replicated. ML1 participant-level outcomes were not displayed: the import and the cross-check against the ML1 analysts' Allowed_forbidden sheet report pass/fail only, and the imported benchmark is sealed. Item wording and coding come from the ML1 codebook. The same ML1 participants supplied the framing benchmark, whose outcomes have been seen; that is a different study's outcome, so no allowed/forbidden outcome was exposed. Public study: may be in training data; read it with the contamination probes.
+    kind: vignette
+    stimuli: data/stimuli/allowed_forbidden_ml1.yaml
+    benchmark: data/benchmarks/holdout_allowed_forbidden_ml1.yaml
+    counterbalance_option_order: true
+    materials_first_public: "1941-03-01"
 
 personas:
   n_profiles: 50
@@ -118,52 +147,62 @@ survey_personas:
     - {name: trust_in_other_people, columns: [trust], group: survey_response}
 
 arms:
+  # Obedience role-play is a long multi-turn conversation (about 30 times the tokens of a one-turn
+  # task) compared descriptively against only 70 people, so it gets a small share of the budget.
+  # Burger's sample bounds the precision: at p = 0.7 the model-vs-human SE is 0.097 with 50 model
+  # trials per condition and 0.086 with 100, so doubling the cost narrows the interval by ~12%.
+  # Held-out studies: 900 per condition keeps the joint test's guaranteed power at 0.80 or more
+  # at the strictest Holm threshold with 3 models x 2 studies (it was 800 with 2 models).
   - id: baseline
     persona: false
     n_per_cell: 100
-    n_per_cell_by_task: {framing: 800, holdout: 800}
+    n_per_cell_by_task: {framing: 800, holdout: 900, allowed_forbidden: 900, obedience: 50}
     role: primary
+  # Persona arms run on the one-turn tasks, whose human samples (thousands) can show whether a
+  # profile helps; on obedience they would cost most of the budget against 70 people.
   - id: persona
     persona: true
     replicates_per_profile: 2
+    tasks: [framing, holdout, allowed_forbidden]
     role: secondary
   - id: survey_persona
     persona: true
     persona_source: survey
     replicates_per_profile: 2
+    tasks: [framing, holdout, allowed_forbidden]
     role: secondary
   - id: survey_persona_demog
     persona: true
     persona_source: survey
     persona_fields: demographic_only
     replicates_per_profile: 2
-    tasks: [framing, holdout]
+    tasks: [framing, holdout, allowed_forbidden]
     role: secondary
   - id: design_aware
     persona: false
     n_per_cell: 100
     design_disclosure: true
-    tasks: [framing, holdout]
+    tasks: [framing, holdout, allowed_forbidden]
     role: secondary
   - id: population_forecast
     method: population_forecast
     persona: false
     n_per_cell: 10
-    tasks: [framing, holdout]
+    tasks: [framing, holdout, allowed_forbidden, obedience]
     role: secondary
   - id: population_forecast_design
     method: population_forecast
     persona: false
     n_per_cell: 10
     design_disclosure: true
-    tasks: [framing, holdout]
+    tasks: [framing, holdout, allowed_forbidden]
     role: secondary
   - id: persona_forecast_survey
     method: persona_forecast
     persona: true
     persona_source: survey
     replicates_per_profile: 1
-    tasks: [framing, holdout]
+    tasks: [framing, holdout, allowed_forbidden]
     role: secondary
   - id: persona_forecast_survey_demog
     method: persona_forecast
@@ -171,11 +210,12 @@ arms:
     persona_source: survey
     persona_fields: demographic_only
     replicates_per_profile: 1
-    tasks: [framing, holdout]
+    tasks: [framing, holdout, allowed_forbidden]
     role: secondary
   - id: paraphrase
     persona: false
     n_per_cell: 50
+    n_per_cell_by_task: {obedience: 25}   # enough to see a large wording effect
     prompt_variants: paraphrases
     role: sensitivity
 
@@ -184,6 +224,12 @@ analysis:
   margin_proportion: 0.10
   margin_cohens_h: 0.20
   margin_smd: 0.20
+  primary_test: joint   # a study is reproduced only if its effect AND both levels are equivalent
+  # ... and only if the model shows an effect of its own in the human direction: equivalence
+  # within h = 0.20 alone would let a model with a much weaker effect pass when the human effect
+  # is small. At 900 per condition this needs a human effect of about h = 0.15 for 80% power
+  # (`sim doctor`); set to false before freezing if a published effect is smaller than that.
+  primary_requires_effect: true
   multiple_comparisons: holm
   bootstrap_iterations: 5000
 

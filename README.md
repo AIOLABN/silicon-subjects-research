@@ -2,7 +2,7 @@
 
 How closely do language models reproduce human choices, and when could their predictions reduce the burden on research participants? Adham Mater examines these questions in Silicon Subjects and the Limits of Simulating Human Behavior.
 
-The study compares model responses with three published experiments. Many Labs 1 provides a gain–loss framing benchmark. Burger’s obedience replication provides a descriptive comparison at the 150-volt decision point. The Many Labs 2 moral-judgment task (Hauser.4) serves as the hold-out. The software records the prompts, responses, coding decisions and analysis inputs for each run.
+The October 2026 thesis describes three experiments. The current software extends that design with a second held-out task and a third model. It uses Many Labs 1 gain–loss framing and Burger’s 150-volt obedience replication for development. The held-out comparisons are the Many Labs 2 Hauser.4 moral-judgment task and the Many Labs 1 allowed/forbidden question-wording task.
 
 **Study status.** This release contains the research design, imported framing data, a fixed General Social Survey (GSS) panel and an offline demonstration. Confirmatory model results are pending. The [source record](docs/sources.md) identifies the wording, benchmark and sampling decisions that remain open.
 
@@ -34,7 +34,7 @@ An unchanged run ID resumes unfinished trials. After changing the source or inpu
 
 ## Sources and study preparation
 
-[The source registry](data/sources/sources.yaml) records citations, URLs, licenses, hashes, variables and unresolved discrepancies. [The source notes](docs/sources.md) describe the checks and decisions still open.
+[The source registry](data/sources/sources.yaml) records citations, URLs, licenses, hashes and variable definitions. [The source notes](docs/sources.md) describe the verification procedures.
 
 ```text
 sim sources fetch
@@ -47,26 +47,21 @@ sim doctor
 
 Raw sources stay in `data/raw/` and are ignored by Git. The hold-out benchmarks are also ignored; extraction rebuilds them only when their hashes match the registry. Earlier commits contain these outcomes, and the original studies are public, so sealing does not establish that the material is unfamiliar to a model.
 
-Before freezing the main study:
-
-1. Sign off the framing and hold-out import specifications after reviewing the counts and coding.
-2. Resolve the framing wording and choose the hold-out analysis set: published results or the four-second exclusion rule.
-3. Check Burger's prods, learner script and counts against the paper.
-4. Verify the model identifiers and training cutoffs, demographic targets and GSS weight choice.
-5. Review the primary family, sample sizes, margins, token limits, timeouts and prices. The current primary family has four baseline comparisons across framing, the hold-out and two models. Obedience and persona comparisons are secondary or descriptive.
-6. Run the exploratory pilot, review refusals and truncation, then freeze and archive the final plan with an independent timestamp.
-
-The current baseline has 800 responses per condition for framing and the hold-out. Burger's human sample cannot support equivalence at the current h margin of 0.20 under the implemented test; obedience is therefore descriptive. [The methods](docs/methods.md) explain the analyses and their limits. [The GSS notes](data/survey/README.md) explain the respondent panel.
+The study runs three models: Claude Opus 5.5 and Claude Sonnet 5.5 (training cutoff June 2026) and OpenAI GPT-6.1 Sol (cutoff April 30, 2026). The baseline has 800 responses per condition for framing and 900 for each held-out study. Only the held-out studies make confirmatory claims, and a study counts as reproduced only if its effect and every condition level are equivalent (`analysis.primary_test: joint`) and the model shows an effect of its own in the human direction (`analysis.primary_requires_effect`). Burger's human sample cannot support equivalence at the current h margin of 0.20 under the implemented test, so obedience is descriptive: 50 role-play responses per condition plus population forecasts, because its 70 participants bound the precision of any comparison. [The methods](docs/methods.md) explain the analyses and their limits. [The GSS notes](data/survey/README.md) explain the respondent panel.
 
 ## Collection and analysis
 
 ```powershell
 $env:ANTHROPIC_API_KEY = "your-key"
+$env:OPENAI_API_KEY = "your-key"
 sim run -c configs/smoke.yaml --exploratory --run-id smoke-1 --max-cost 5
 sim analyze smoke-1 -c configs/smoke.yaml
+sim estimate --from-run smoke-1
 ```
 
-For the main study, `sim freeze` records the configuration, data and source identity. `sim run --dry-run` shows the pending plan without collecting responses. `sim run --run-id study-1` collects or resumes it. The first confirmatory run is registered in `prereg.<study_id>.runs.jsonl`; archive that record with the lock. Later runs need `--replication`.
+The pilot (`configs/smoke.yaml`, 48 trials, about $1.85 to $3.25) runs one or two trials of every kind the study runs, except on the held-out studies. `sim estimate --from-run smoke-1` then replaces the assumed tokens per trial with the measured ones, including format repairs and retries, and reports a typical and a cautious cost for the full plan. Before measuring, the estimate is $473.74 (cautious $875.42).
+
+For the main study, `sim freeze` records the configuration, data and source identity. `sim run --dry-run` shows the pending plan without collecting responses. `sim run --run-id study-1` collects or resumes it; `--max-cost` caps what the run has spent in total, earlier invocations included. The first confirmatory run is registered in `prereg.<study_id>.runs.jsonl`; archive that record with the lock. Later runs need `--replication`.
 
 `sim analyze study-1` uses the saved inputs and checks the analysis code. Incomplete collections require `--partial` and produce provisional outputs. Changed inputs or code require `--reanalyze`, which writes a separate exploratory analysis. `sim compare-runs` reports variation between independent runs. `sim recover` repairs an interrupted results file without starting collection. `sim audit` exports a blinded coding sample and a separate automatic-coding key.
 

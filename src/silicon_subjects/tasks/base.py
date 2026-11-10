@@ -101,6 +101,18 @@ class Task(ABC):
     def system_prompt(self, persona: Persona | None) -> str:
         return persona.render() if persona else BASELINE_SYSTEM
 
+    def response_instruction(self, persona: Persona | None) -> str:
+        # The persona system prompt asks the model to respond as the described person, so a
+        # persona trial must not also be told to answer "as yourself".
+        if persona is None:
+            return str(self.stimuli["response_instruction"])
+        if "persona_response_instruction" not in self.stimuli:
+            raise ValueError(
+                f"{self.id}: persona arms need `persona_response_instruction` in the stimuli; "
+                "`response_instruction` speaks to the model as itself"
+            )
+        return str(self.stimuli["persona_response_instruction"])
+
     @abstractmethod
     async def run(
         self, trial: TrialSpec, persona: Persona | None, provider: Provider

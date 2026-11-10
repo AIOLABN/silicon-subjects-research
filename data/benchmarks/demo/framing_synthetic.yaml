@@ -19,8 +19,7 @@ target_population: >-
   Adult volunteers from university participant pools and online samples recruited at many
   research sites, most of them in the United States.
 target_population_note: >-
-  VERIFY against Klein et al. (2014): number of samples, countries, and the online/in-lab mix.
-  National GSS weights do not represent this population; persona-based methods carry that
+  Summarized from Klein et al. (2014). National GSS weights do not represent this population; persona-based methods carry that
   mismatch and it is reported, not corrected.
 # Optional, for the human replication range: one entry per site with per-condition k/n.
 sites: []

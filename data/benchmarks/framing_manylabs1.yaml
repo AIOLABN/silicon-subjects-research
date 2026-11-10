@@ -326,7 +326,7 @@ import_provenance:
   raw_label: ml1_cleaned (full raw file)
   raw_sha256: d07e664c137c514981ccd9abae96d24469867a37e9a93fe695a734e475fc3f05
   spec_file: manylabs1_framing.yaml
-  spec_sha256: 4da9d41f384bb2fa7fd91f59e18a5f7681893beb466ab1db70a06ac6c2fd66d0
+  spec_sha256: feb464d4da6a02f203e3f93056343aa775473633303fa2ecd1ace200497892cb
   rows_in_file: 6344
   rows_used: 6271
   excluded:

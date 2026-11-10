@@ -7,7 +7,6 @@ import datetime as dt
 import hashlib
 import json
 import logging
-import math
 import os
 import random
 from pathlib import Path
@@ -15,7 +14,7 @@ from typing import Annotated, Any
 
 import typer
 
-from . import analysis, design, personas, prereg, pricing, probes, runstore
+from . import analysis, costs, design, personas, prereg, probes, runstore
 from .config import StudyConfig, load_config
 from .hashing import stable_id
 from .providers import build_provider
@@ -128,28 +127,6 @@ def plan(config: ConfigOpt = DEFAULT_CONFIG) -> None:
     typer.echo(f"\nTOTAL trials: {len(trials)}")
 
 
-TOKENS = {
-    "choice": (600, 1000),
-    "population_forecast": (700, 800),
-    "persona_forecast": (800, 800),
-    "obedience_choice": (25_000, 11_000),
-}
-
-
-def _cost_rows(
-    cfg: StudyConfig, tasks: dict[str, Task], trials: list[TrialSpec], multiplier: float = 1.0
-) -> dict[tuple[str, str, str], list[float]]:
-    rows: dict[tuple[str, str, str], list[float]] = {}
-    for t in trials:
-        kind = tasks[t.task_id].kind
-        key = "obedience_choice" if kind == "obedience" and t.method == "choice" else t.method
-        tin, tout = TOKENS[key]
-        price = pricing.price(cfg.model(t.model_id).model)
-        cost = (tin * price[0] + tout * multiplier * price[1]) / 1e6 if price else math.nan
-        rows.setdefault((t.model_id, t.task_id, t.method), []).append(cost)
-    return rows
-
-
 @app.command()
 def doctor(config: ConfigOpt = DEFAULT_CONFIG) -> None:
     """Check readiness for a confirmatory run; exits 1 if anything FAILs. Calls no API."""
@@ -167,23 +144,52 @@ def doctor(config: ConfigOpt = DEFAULT_CONFIG) -> None:
 @app.command()
 def estimate(
     config: ConfigOpt = DEFAULT_CONFIG,
+    from_run: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--from-run",
+            help="Run id (under results/) or run directory whose measured per-trial tokens "
+            "replace the assumptions for the same model, task and method; repeatable. The "
+            "exploratory pilot (configs/smoke.yaml) is the intended source.",
+        ),
+    ] = None,
     thinking_multiplier: Annotated[
-        float, typer.Option(help="Scale output tokens for a pessimistic thinking budget")
+        float,
+        typer.Option(help="Scale assumed output tokens (rows not measured by --from-run)"),
     ] = 1.0,
 ) -> None:
-    """Estimate API cost of the full plan from assumed tokens per trial (nothing is called)."""
+    """Estimate API cost of the full plan (nothing is called)."""
     cfg = _setup(config, inputs=True)
     tasks = build_tasks(cfg)
     trials = design.build_manifest(cfg, tasks, personas.load_sets(cfg))
-    total = 0.0
-    rows = _cost_rows(cfg, tasks, trials, thinking_multiplier)
-    for (m, task, method), costs in sorted(rows.items()):
-        sub = sum(costs)
-        total += sub if math.isfinite(sub) else 0.0
-        typer.echo(f"{m:10} {task:10} {method:20} trials={len(costs):5}  est=${sub:8.2f}")
+    runs = [Path(r) if Path(r).is_dir() else _results_dir(cfg) / r for r in from_run or []]
+    try:
+        measured = costs.measure(runs)
+    except FileNotFoundError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(2) from e
+    rows = costs.estimate(cfg, tasks, trials, measured, thinking_multiplier)
+    for r in rows:
+        who = "persona" if r.persona else "-"
+        typer.echo(
+            f"{r.model_id:10} {r.task_id:10} {r.method:20} {who:7} trials={r.trials:5}  "
+            f"est=${r.expected_usd:8.2f}  cautious=${r.cautious_usd:8.2f}  {r.source}"
+        )
+    assumed = sum(r.trials for r in rows if r.source == "assumed")
     typer.echo(
-        f"\nTOTAL {len(trials)} trials, estimated ${total:.2f} "
-        f"(token assumptions in cli.TOKENS; format repairs and retries not included)"
+        f"\nTOTAL {len(trials)} trials, estimated ${costs.total(rows):.2f} "
+        f"(cautious ${costs.total(rows, 'cautious_usd'):.2f}: 90th-percentile tokens per trial "
+        "where measured, doubled output where assumed)"
+    )
+    typer.echo(
+        f"{assumed} trial(s) use assumed tokens (costs.ASSUMED_TOKENS); "
+        + (
+            "measure them with the pilot: `sim run -c configs/smoke.yaml --exploratory`, then "
+            "`sim estimate --from-run <pilot run id>`"
+            if assumed
+            else "every row is measured or a measured proxy"
+        )
+        + ". Failed trials are not included."
     )
 
 
@@ -245,8 +251,9 @@ def run(
     max_cost: Annotated[
         float | None,
         typer.Option(
-            help="Stop starting new trials once measured spend in this invocation reaches this "
-            "many USD (in-flight trials finish)."
+            help="Stop starting new trials once the run's measured spend reaches this many USD, "
+            "counting earlier invocations of the same run ID (in-flight trials finish). Raise "
+            "the cap to continue a run that reached it."
         ),
     ] = None,
     recover_tail: Annotated[
@@ -317,7 +324,8 @@ def run(
     if rep.skipped_for_budget:
         typer.echo(
             f"spending cap ${max_cost:.2f} reached: {rep.skipped_for_budget} selected trial(s) "
-            f"not started; resume with --run-id {run_id}"
+            f"not started; the cap counts everything this run has spent, so resume with "
+            f"--run-id {run_id} and a higher --max-cost"
         )
     if not rep.study_complete:
         typer.echo(
@@ -338,9 +346,7 @@ def _dry_run(
         done = {r["trial_id"] for r in runstore.read_records(path)}
     pending = [t for t in trials if t.trial_id not in done]
     selected = pending[:limit] if limit is not None else pending
-    cost = sum(
-        c for cs in _cost_rows(cfg, tasks, selected).values() for c in cs if math.isfinite(c)
-    )
+    cost = costs.total(costs.estimate(cfg, tasks, selected))
     by_task: dict[str, int] = {}
     for t in selected:
         by_task[t.task_id] = by_task.get(t.task_id, 0) + 1
@@ -356,6 +362,9 @@ def _dry_run(
         os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")
     ):
         typer.echo("  note: ANTHROPIC_API_KEY is not set; a real run would fail to authenticate")
+    for env in sorted({m.key_env or "" for m in cfg.models if m.provider == "openai_compatible"}):
+        if env and not os.environ.get(env):
+            typer.echo(f"  note: {env} is not set; a real run would fail to authenticate")
 
 
 @app.command("compare-runs")
@@ -531,8 +540,8 @@ def sources_fetch(
         typer.echo(f"{r.status:14} {r.source}: {r.detail}")
     if any(r.status in ("hash_mismatch", "failed") for r in results):
         typer.echo(
-            "Some sources could not be fetched. Upload them into the path shown in "
-            "data/sources/sources.yaml, or allow the host in the environment's network policy.",
+            "Some sources could not be fetched. Download them manually to the path shown in "
+            "data/sources/sources.yaml and run the command again.",
             err=True,
         )
         raise typer.Exit(1)
@@ -540,7 +549,7 @@ def sources_fetch(
 
 @sources_app.command("extract")
 def sources_extract(root: RootOpt = Path(".")) -> None:
-    """Write the committed extracts (e.g. the CC0 Many Labs 1 framing subset) from raw files,"""
+    """Write the committed extracts (e.g. the CC0 Many Labs 1 framing subset) from raw files."""
     from . import sources
 
     reg = sources.load_registry(root)

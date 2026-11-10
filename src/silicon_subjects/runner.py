@@ -12,9 +12,16 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__, prereg, pricing, runstore
-from .config import StudyConfig
+from .config import ModelSpec, StudyConfig
 from .personas import Persona, field_groups, select_fields
-from .providers import ChatMessage, Completion, Provider, TransientProviderError, build_provider
+from .providers import (
+    ChatMessage,
+    Completion,
+    Provider,
+    TransientProviderError,
+    build_provider,
+    seed_is_sent,
+)
 from .tasks import Task, TrialSpec
 
 log = logging.getLogger(__name__)
@@ -45,6 +52,7 @@ class _Metered:
     def __init__(self, inner: Provider) -> None:
         self._inner = inner
         self.name = inner.name
+        self.sends_seed = bool(getattr(inner, "sends_seed", False))
         self.input_tokens = 0
         self.output_tokens = 0
 
@@ -98,6 +106,7 @@ class RunReport:
     unresolved_failures: list[str]
     skipped_for_budget: int = 0
 
+    # Cumulative for the run directory, earlier invocations included.
     spent_usd: float | None = None
 
     @property
@@ -112,7 +121,8 @@ class RunReport:
         return (
             f"planned {self.planned}, previously completed {self.previously_completed}, "
             f"selected {self.selected}, completed {self.completed}, failed {len(self.failed)}, "
-            f"skipped (budget) {self.skipped_for_budget}, pending {self.pending}, spent "
+            f"skipped (budget) {self.skipped_for_budget}, pending {self.pending}, spent on "
+            "this run so far "
             + (f"${self.spent_usd:.2f}" if self.spent_usd is not None else "unknown")
         )
 
@@ -267,6 +277,7 @@ class Runner:
             "provenance": prereg.git_provenance(self.cfg.root),
             "n_trials": len(trials),
             "models": [m.model_dump(mode="json") for m in self.cfg.models],
+            "seed_sent_to_provider": {m.id: seed_is_sent(m) for m in self.cfg.models},
             "config": config,
         }
         runstore.atomic_write_text(self.paths.manifest, json.dumps(manifest, indent=2))
@@ -337,7 +348,7 @@ class Runner:
                     return self._fail(trial, "permanent", e, attempt_errors, discarded)
 
         trial_cost = self._charge(
-            spec.model, res.input_tokens + discarded[0], res.output_tokens + discarded[1]
+            spec, res.input_tokens + discarded[0], res.output_tokens + discarded[1]
         )
         served = sorted(res.served_models)
         self._append(
@@ -363,6 +374,7 @@ class Runner:
                     "max_tokens": spec.max_tokens,
                     "effort": spec.effort,
                     "sampling": spec.sampling,
+                    "seed_sent": bool(getattr(provider, "sends_seed", seed_is_sent(spec))),
                     "structured_output": trial.method != "choice",
                 },
                 "started_at": started,
@@ -380,8 +392,8 @@ class Runner:
             log.info("completed %d/%d", self._done, total)
         return None
 
-    def _charge(self, model: str, input_tokens: int, output_tokens: int) -> float | None:
-        cost = pricing.cost(model, input_tokens, output_tokens)
+    def _charge(self, spec: ModelSpec, input_tokens: int, output_tokens: int) -> float | None:
+        cost = pricing.cost_for(spec, input_tokens, output_tokens)
         if cost is None:
             self._unpriced = True
         else:
@@ -396,7 +408,7 @@ class Runner:
         attempt_errors: list[dict[str, Any]],
         discarded: list[int],
     ) -> dict[str, Any]:
-        cost = self._charge(self.cfg.model(trial.model_id).model, *discarded)
+        cost = self._charge(self.cfg.model(trial.model_id), *discarded)
         record = {
             "trial_id": trial.trial_id,
             "kind": kind,
@@ -414,11 +426,11 @@ class Runner:
     async def run(
         self, trials: list[TrialSpec], limit: int | None = None, *, recover_tail: bool = False
     ) -> RunReport:
-        unpriced = sorted({m.model for m in self.cfg.models if pricing.price(m.model) is None})
+        unpriced = sorted({m.model for m in self.cfg.models if pricing.price_for(m) is None})
         if self.max_cost_usd is not None and unpriced:
             raise ValueError(
-                f"--max-cost needs prices, but there is no price for {unpriced}; add them "
-                "to pricing.py or run without a cap"
+                f"--max-cost needs prices, but there is no price for {unpriced}; set "
+                "`price_usd_per_mtok` on the model in the config, or run without a cap"
             )
         self._prepare(trials)
 
@@ -426,7 +438,22 @@ class Runner:
             if recover_tail and (action := runstore.recover_tail(path)):
                 log.warning("recovered %s: %s", path.name, action)
         records = runstore.read_records(self.paths.trials)
-        runstore.read_jsonl(self.paths.errors)
+        earlier_failures = runstore.read_jsonl(self.paths.errors)
+        # The cap is for the run, not the invocation: a resumed run starts from what its saved
+        # records already cost (a failed attempt's cost is in errors.jsonl, the retry's in the
+        # trial record, so the two never count the same tokens).
+        self._spent, self._unpriced = 0.0, False
+        for r in [*records, *earlier_failures]:
+            if (cost := r.get("cost_usd")) is not None:
+                self._spent += float(cost)
+            elif r.get("input_tokens") or r.get("output_tokens"):
+                self._unpriced = True
+        if self.max_cost_usd is not None and self._unpriced:
+            raise ValueError(
+                f"--max-cost cannot be enforced: {self.paths.root} already holds records whose "
+                "cost was not recorded, so the run's spend so far is unknown. Run without a cap, "
+                "or start a new run ID"
+            )
 
         rec = runstore.reconcile(runstore.plan_records(trials), records)
         if not rec.consistent:

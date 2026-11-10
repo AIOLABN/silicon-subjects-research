@@ -1,4 +1,4 @@
-# Feasibility of prediction-powered inference
+# Mixed subjects / prediction-powered inference: feasibility (not implemented)
 
 **Status: disabled.** This page sets out what a valid design would need. It does not claim
 that any human participants can be saved.
@@ -32,13 +32,8 @@ that any human participants can be saved.
 5. **Validation on development data first.** Show a non-trivial PPI correlation on a
    development study before using it on an evaluation study.
 
-## Missing inputs
+**Never do any of these:**
 
-- Verified pre-treatment covariates for the Many Labs 1 participants.
-- A mapping from ML1 covariates to persona fields. It must not include any field that reveals
-  the outcome.
-- An unlabeled pool from the target population: either held-back ML1 participants whose
-  outcomes are hidden, or a population sample with the same covariates.
-- A choice of estimator and its preregistration.
-
-Model predictions and repeated software draws cannot increase the observed human sample size. Estimating recruitment savings would require a validated design with measured precision gains.
+- pool AI responses with human participants as if they were people
+- count software draws as observations
+- report "recruitment savings" until a validated design has shown them

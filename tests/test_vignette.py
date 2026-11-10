@@ -153,3 +153,60 @@ def test_probe_uses_the_focal_condition(demo_cfg: StudyConfig) -> None:
     text = probes.stimulus_text(task)
     focal = task.stimuli["variants"]["original"]["conditions"][task.contrast[0]]
     assert focal["scenario"] in text and focal["question"] in text
+
+
+def _af_task(demo_cfg: StudyConfig) -> object:
+    from silicon_subjects.config import TaskSpec, load_yaml
+    from silicon_subjects.tasks.vignette import VignetteTask
+
+    spec = TaskSpec(
+        id="allowed_forbidden",
+        kind="vignette",
+        stimuli=Path("data/stimuli/allowed_forbidden_ml1.yaml"),
+        benchmark=Path("data/benchmarks/templates/holdout_allowed_forbidden_ml1.yaml"),
+        split="evaluation",
+        exposure="test",
+        counterbalance_option_order=True,
+    )
+    return VignetteTask(
+        spec,
+        load_yaml(demo_cfg.path(spec.stimuli)),
+        load_yaml(demo_cfg.path(spec.benchmark)),
+    )
+
+
+def _af_trial(cond: str, order: str = "yes_first", method: str = "choice") -> TrialSpec:
+    return TrialSpec(
+        "t", "m", "allowed_forbidden", "baseline", cond, "original", None, 0,
+        {"answer_order": order}, 1, method=method,
+    )  # fmt: skip
+
+
+async def test_question_only_items_and_outcome_coded_by_condition(demo_cfg: StudyConfig) -> None:
+    task = _af_task(demo_cfg)
+    text = task.materials(_af_trial("forbid"))
+    assert text == "Do you think the United States should forbid public speeches against democracy?"
+    cases = [("forbid", "No", 1), ("forbid", "Yes", 0), ("allow", "Yes", 1), ("allow", "No", 0)]
+    for cond, answer, permits in cases:
+        res = await task.run(_af_trial(cond), None, Scripted([f"ANSWER: {answer}"]))
+        assert res.outcome == {"answer": answer.lower(), "permits_speeches": permits}
+
+
+async def test_forecast_reads_the_probability_of_the_outcome_answer(
+    demo_cfg: StudyConfig,
+) -> None:
+    task = _af_task(demo_cfg)
+    reply = '{"Yes": 0.3, "No": 0.7}'
+    forbid = await task.run(
+        _af_trial("forbid", method="population_forecast"), None, Scripted([reply])
+    )
+    allow = await task.run(
+        _af_trial("allow", method="population_forecast"), None, Scripted([reply])
+    )
+    assert forbid.outcome["permits_speeches"] == 0.7
+    assert allow.outcome["permits_speeches"] == 0.3
+
+
+def test_trolley_outcome_is_still_yes(demo_cfg: StudyConfig) -> None:
+    task = build_tasks(demo_cfg)["holdout"]
+    assert task.outcome_answer("greater_good") == task.outcome_answer("side_effect") == "Yes"

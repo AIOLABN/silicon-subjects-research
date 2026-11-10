@@ -108,6 +108,26 @@ def tost(delta: float, se: float, margin: float) -> Equivalence:
     )
 
 
+def directional_p(estimate: float, se: float, direction: float) -> float:
+    """One-sided p-value that `estimate` lies on the `direction` side of zero (z test).
+
+    `direction` is the sign the effect is required to have; 0 (no direction to match) gives 1.
+    """
+    if not (se > 0 and math.isfinite(se) and math.isfinite(estimate)):
+        return math.nan
+    if direction == 0 or not math.isfinite(direction):
+        return 1.0
+    return float(stats.norm.sf(math.copysign(1.0, direction) * estimate / se))
+
+
+def directional_power(se: float, true_effect: float, alpha: float = 0.05) -> float:
+    return float(stats.norm.cdf(abs(true_effect) / se - stats.norm.ppf(1 - alpha)))
+
+
+def directional_min_effect(se: float, alpha: float = 0.05, power: float = 0.8) -> float:
+    return float((stats.norm.ppf(1 - alpha) + stats.norm.ppf(power)) * se)
+
+
 def diff_prop_se(k1: int, n1: int, k2: int, n2: int) -> float:
     p1, p2 = k1 / n1, k2 / n2
     return math.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)

@@ -176,7 +176,12 @@ def level_agreement(cells: pd.DataFrame, cfg: StudyConfig, tasks: dict[str, Task
                 p_values=evaluation.EXPLORATORY,
             )
         rows.append(row)
-    return pd.DataFrame(rows)
+    out = pd.DataFrame(rows)
+    if not out.empty and cfg.analysis.primary_test == "joint":
+        family = set(confirmatory_family(cfg))
+        keys = zip(out["model_id"], out["task_id"], out["arm_id"], strict=True)
+        out["family"] = [JOINT_COMPONENT if k in family else "secondary" for k in keys]
+    return out
 
 
 def effect_agreement(cells: pd.DataFrame, cfg: StudyConfig, tasks: dict[str, Task]) -> pd.DataFrame:
@@ -233,6 +238,8 @@ def effect_agreement(cells: pd.DataFrame, cfg: StudyConfig, tasks: dict[str, Tas
                     delta_hi90=eq.ci90.hi,
                     tost_p=eq.p,
                     same_direction=bool(math.copysign(1, m_h) == math.copysign(1, h_h)),
+                    # Does the model show an effect of its own, in the human direction?
+                    effect_present_p=stats.directional_p(m_h, m_se, h_h),
                 )
         else:
             hf_c, hr_c = _human_cont(task, focal), _human_cont(task, ref)
@@ -250,31 +257,94 @@ def effect_agreement(cells: pd.DataFrame, cfg: StudyConfig, tasks: dict[str, Tas
                     delta_hi90=eq.ci90.hi,
                     tost_p=eq.p,
                     same_direction=bool(math.copysign(1, m_g) == math.copysign(1, h_g)),
+                    effect_present_p=stats.directional_p(m_g, m_se, h_g),
                 )
         rows.append(row)
     out = pd.DataFrame(rows)
     if not out.empty:
-        family = set(confirmatory_family(cfg))
-        primary_arms = {arm.id for arm in cfg.arms if arm.role == "primary"}
-        keys = list(zip(out["model_id"], out["task_id"], out["arm_id"], strict=True))
-        out["family"] = [
-            "confirmatory (Holm)"
-            if k in family
-            else "descriptive (task excluded from the equivalence family)"
-            if k[2] in primary_arms
-            else "secondary"
-            for k in keys
-        ]
+        out["family"] = _family_labels(out, cfg, component=cfg.analysis.primary_test == "joint")
     if not out.empty and "tost_p" in out:
         mask = out["family"].str.startswith("confirmatory") & out["tost_p"].notna()
         out["tost_p_holm"] = math.nan
         if cfg.analysis.multiple_comparisons == "holm" and mask.any():
-            m = len(set(confirmatory_family(cfg)))
-            ps = out.loc[mask, "tost_p"].tolist()
-            out.loc[mask, "tost_p_holm"] = stats.holm(ps + [1.0] * (m - len(ps)))[: len(ps)]
+            out.loc[mask, "tost_p_holm"] = _holm_planned(out.loc[mask, "tost_p"].tolist(), cfg)
         out["equivalent"] = out["tost_p_holm"].fillna(out["tost_p"]) < cfg.analysis.alpha
 
         out.loc[out["family"].str.startswith("descriptive"), "equivalent"] = False
+    return out
+
+
+JOINT_COMPONENT = "component of the confirmatory joint test (section 1)"
+
+
+def _family_labels(out: pd.DataFrame, cfg: StudyConfig, *, component: bool) -> list[str]:
+    family = set(confirmatory_family(cfg))
+    primary_arms = {arm.id for arm in cfg.arms if arm.role == "primary"}
+    keys = list(zip(out["model_id"], out["task_id"], out["arm_id"], strict=True))
+    return [
+        (JOINT_COMPONENT if component else "confirmatory (Holm)")
+        if k in family
+        else "descriptive (task excluded from the equivalence family)"
+        if k[2] in primary_arms
+        else "secondary"
+        for k in keys
+    ]
+
+
+def _holm_planned(ps: list[float], cfg: StudyConfig) -> list[float]:
+    # The family size is fixed by the plan, so a sealed or missing comparison still counts.
+    m = len(set(confirmatory_family(cfg)))
+    return stats.holm(ps + [1.0] * (m - len(ps)))[: len(ps)]
+
+
+def primary_agreement(
+    effects: pd.DataFrame, levels: pd.DataFrame, cfg: StudyConfig, tasks: dict[str, Task]
+) -> pd.DataFrame:
+    """One confirmatory claim per planned (model, study): the model reproduces the study.
+
+    Under `primary_test: joint` the claim needs the effect and every condition level to be
+    equivalent; `primary_requires_effect` also needs the model's own effect to differ from zero
+    in the human direction. Its p-value is the largest component p-value (an intersection-union
+    test, valid at alpha with no correction across components); Holm then runs across the
+    planned family.
+    """
+    a = cfg.analysis
+    joint = a.primary_test == "joint"
+    primary_arms = {arm.id for arm in cfg.arms if arm.role == "primary"}
+    if effects.empty:
+        return pd.DataFrame()
+    eff = effects[effects["arm_id"].isin(primary_arms)]
+    lv = levels.set_index(["model_id", "task_id", "arm_id", "condition"]) if len(levels) else None
+    rows = []
+    for _, e in eff.iterrows():
+        key = (e["model_id"], e["task_id"], e["arm_id"])
+        row: dict[str, Any] = dict(zip(("model_id", "task_id", "arm_id"), key, strict=True))
+        components = {"effect": e.get("tost_p", math.nan)}
+        if a.primary_requires_effect:
+            components["effect_present"] = e.get("effect_present_p", math.nan)
+        if joint:
+            for cond in tasks[e["task_id"]].conditions():
+                p = math.nan
+                if lv is not None and (*key, cond) in lv.index:
+                    p = lv.loc[(*key, cond), "tost_p"]
+                components[f"level_{cond}"] = p
+        missing = [c for c, p in components.items() if p is None or math.isnan(float(p))]
+        row["test"] = ("joint (effect and levels)" if joint else "effect only") + (
+            ", effect present" if a.primary_requires_effect else ""
+        )
+        row["components"] = ", ".join(components)
+        row.update({f"{c}_tost_p": p for c, p in components.items()})
+        row["joint_p"] = math.nan if missing else max(float(p) for p in components.values())
+        row["missing"] = ", ".join(missing)
+        rows.append(row)
+    out = pd.DataFrame(rows)
+    out["family"] = _family_labels(out, cfg, component=False)
+    mask = out["family"].str.startswith("confirmatory") & out["joint_p"].notna()
+    out["joint_p_holm"] = math.nan
+    if a.multiple_comparisons == "holm" and mask.any():
+        out.loc[mask, "joint_p_holm"] = _holm_planned(out.loc[mask, "joint_p"].tolist(), cfg)
+    decided = out["joint_p_holm"].fillna(out["joint_p"])
+    out["reproduces"] = out["family"].str.startswith("confirmatory") & (decided < a.alpha)
     return out
 
 
@@ -554,10 +624,139 @@ def effect_power_table(cfg: StudyConfig, tasks: dict[str, Task]) -> pd.DataFrame
                 row["n_per_condition_for_80pct_at_holm_strictest"] = stats.tost_n_for_power(
                     stats.cohens_h_se(hf, hr), a.margin_cohens_h, a.alpha / m
                 )
+                if a.primary_requires_effect:
+                    # The human effect is an outcome (sealed for evaluation studies), so this
+                    # component is planned as a threshold instead of a power: the smallest human
+                    # effect at which a model that matched it exactly would pass 80% of the time.
+                    row["effect_present_min_h_for_80pct_at_holm_strictest"] = (
+                        stats.directional_min_effect(stats.cohens_h_se(n, n), a.alpha / m)
+                    )
+                human_ns = [human_sample_sizes(task, c) for c in task.conditions()]
+                if a.primary_test == "joint" and all(human_ns):
+                    # Worst-case p = 0.5, so planning never depends on (sealed) outcomes.
+                    level = [
+                        stats.tost_power(
+                            math.hypot(0.5 / math.sqrt(n), 0.5 / math.sqrt(int(nh or 0))),
+                            a.margin_proportion,
+                            alpha=a.alpha / m,
+                        )
+                        for nh in human_ns
+                    ]
+                    row["min_level_power_at_holm_strictest"] = min(level)
+                    # Bonferroni (Frechet) bound: P(all components pass) >= 1 - sum(P(fail)).
+                    row["joint_power_at_holm_strictest_lower_bound"] = max(
+                        0.0, 1 - (1 - row["power_at_holm_strictest"]) - sum(1 - p for p in level)
+                    )
             else:
                 row["note"] = "no human sample sizes in the benchmark"
             rows.append(row)
     return pd.DataFrame(rows)
+
+
+BIAS_GRID = (0.0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0)
+
+
+def primary_power_under_bias(cfg: StudyConfig, tasks: dict[str, Task]) -> pd.DataFrame:
+    """Power of the primary test's components when the model is close but not exact.
+
+    `power_if_exact` assumes a model with no gap at all. A model's response distribution is fixed,
+    so the real question is how large a gap the test tolerates: each row puts the true gap at a
+    fraction of the margin and gives the chance that the component still shows equivalence at
+    the strictest Holm threshold. Levels use the worst case p = 0.5 and human sample sizes only,
+    so nothing here depends on (sealed) outcomes. Conditions are independent samples, so the
+    chance that every level passes is the product of the per-level powers.
+    """
+    a = cfg.analysis
+    family = confirmatory_family(cfg)
+    m = len(family) if a.multiple_comparisons == "holm" else 1
+    arms = {arm.id: arm for arm in cfg.arms}
+    rows = []
+    for task_id, arm_id in dict.fromkeys((t, arm) for _, t, arm in family):
+        task = tasks[task_id]
+        if task.outcome_type != "binary":
+            continue
+        focal, ref = task.contrast
+        hf, hr = human_sample_sizes(task, focal), human_sample_sizes(task, ref)
+        human_ns = [human_sample_sizes(task, c) for c in task.conditions()]
+        n = _independent_units(cfg, arms[arm_id], task_id)
+        if not (hf and hr and n and all(human_ns)):
+            continue
+        effect_se = math.hypot(stats.cohens_h_se(n, n), stats.cohens_h_se(hf, hr))
+        level_ses = [
+            math.hypot(0.5 / math.sqrt(n), 0.5 / math.sqrt(int(nh or 0))) for nh in human_ns
+        ]
+        for frac in BIAS_GRID:
+            effect_gap, level_gap = frac * a.margin_cohens_h, frac * a.margin_proportion
+            row: dict[str, Any] = {
+                "task_id": task_id,
+                "arm_id": arm_id,
+                "n_model_units_per_condition": n,
+                "family_size": m,
+                "gap_as_fraction_of_margin": frac,
+                "effect_gap_cohens_h": effect_gap,
+                "effect_power_at_holm_strictest": stats.tost_power(
+                    effect_se, a.margin_cohens_h, true_delta=effect_gap, alpha=a.alpha / m
+                ),
+            }
+            if a.primary_test == "joint":
+                row["level_gap_proportion"] = level_gap
+                row["all_levels_power_at_holm_strictest"] = math.prod(
+                    stats.tost_power(
+                        se, a.margin_proportion, true_delta=level_gap, alpha=a.alpha / m
+                    )
+                    for se in level_ses
+                )
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+REFUSAL_STATUSES = ("refusal_ooc", "refusal_platform")
+
+
+def refusal_robustness(
+    df: pd.DataFrame, primary: pd.DataFrame, cfg: StudyConfig, tasks: dict[str, Task]
+) -> pd.DataFrame:
+    """Add to the primary table whether each claim survives either treatment of refusals.
+
+    The primary test uses valid responses only, so refusals that differ between conditions could
+    move it. The claim is recomputed with every refusal counted as outcome 0 and then as outcome
+    1 (the same bounds as the refusal table). These columns are a sensitivity check; `reproduces`
+    stays the preregistered result.
+    """
+    out = primary.copy()
+    if out.empty:
+        return out
+    primary_arms = {arm.id for arm in cfg.arms if arm.role == "primary"}
+    sub = df[df["arm_id"].isin(primary_arms) & (df["prompt_variant"] == "original")]
+    keys = ["model_id", "task_id", "arm_id"]
+    refused = sub["status"].isin(REFUSAL_STATUSES)
+    counts = (
+        sub.assign(_refused=refused, _used=refused | (sub["status"] == "valid"))
+        .groupby(keys)[["_refused", "_used"]]
+        .sum()
+    )
+    index = pd.MultiIndex.from_frame(out[keys])
+    n_ref = counts["_refused"].reindex(index).fillna(0).astype(int).to_numpy()
+    n_used = counts["_used"].reindex(index).fillna(0).astype(int).to_numpy()
+    out["refusals"] = [f"{k}/{n}" for k, n in zip(n_ref, n_used, strict=True)]
+    for bound in (0, 1):
+        col = f"reproduces_refusals_as_{bound}"
+        if not refused.any():
+            out[col] = out["reproduces"]
+            continue
+        imputed = sub.copy()
+        imputed.loc[refused, "y"] = bound
+        imputed.loc[refused, "status"] = "valid"
+        cells = cell_summary(imputed, cfg, tasks)
+        redo = primary_agreement(
+            effect_agreement(cells, cfg, tasks), level_agreement(cells, cfg, tasks), cfg, tasks
+        )
+        verdict = redo.set_index(keys)["reproduces"] if not redo.empty else pd.Series(dtype=bool)
+        out[col] = verdict.reindex(index).fillna(False).astype(bool).to_numpy()
+    out["robust_to_refusals"] = (out["reproduces_refusals_as_0"] == out["reproduces"]) & (
+        out["reproduces_refusals_as_1"] == out["reproduces"]
+    )
+    return out
 
 
 def _compute(
@@ -598,10 +797,15 @@ def _compute(
         res.tables = method_tables
         return res
     cells = cell_summary(df, cfg, tasks)
+    effects = effect_agreement(cells, cfg, tasks)
+    levels = level_agreement(cells, cfg, tasks)
     res.tables = {
         "cells": cells,
-        "primary_effect_agreement": effect_agreement(cells, cfg, tasks),
-        "level_agreement": level_agreement(cells, cfg, tasks),
+        "primary_agreement": refusal_robustness(
+            df, primary_agreement(effects, levels, cfg, tasks), cfg, tasks
+        ),
+        "primary_effect_agreement": effects,
+        "level_agreement": levels,
         "persona_heterogeneity": persona_heterogeneity(df, cfg, tasks),
         "persona_vs_baseline": persona_vs_baseline(cells, cfg, tasks),
         "persona_subgroups": persona_subgroups(df, cfg, personas),
@@ -609,8 +813,18 @@ def _compute(
         "refusal_sensitivity": refusal_sensitivity(df, cfg, tasks),
         "power": power_table(cfg, tasks),
         "primary_power": effect_power_table(cfg, tasks),
+        "primary_power_under_bias": primary_power_under_bias(cfg, tasks),
         **method_tables,
     }
+    primary = res.tables["primary_agreement"]
+    if not primary.empty:
+        for _, r in primary[~primary["robust_to_refusals"]].iterrows():
+            res.warnings.append(
+                f"{r['model_id']}/{r['task_id']}: the primary result depends on how refusals are "
+                f"treated ({r['refusals']} refused; reproduces = {bool(r['reproduces'])}, "
+                f"{bool(r['reproduces_refusals_as_0'])} with refusals as 0, "
+                f"{bool(r['reproduces_refusals_as_1'])} with refusals as 1)"
+            )
     if int(cells["served_model_mismatch"].sum()):
         res.warnings.append("some responses were served by a model other than the pinned id")
     if not bool(df["confirmatory"].all()):

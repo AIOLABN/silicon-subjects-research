@@ -16,9 +16,10 @@ class SurveyTask(Task):
         v = self.stimuli["variants"][trial.prompt_variant]
         lo, hi = int(v["scale"]["min"]), int(v["scale"]["max"])
         system = self.system_prompt(persona)
+        instruction = self.response_instruction(persona)
         prompt = (
             f"{v['conditions'][trial.condition]}\n\n{v['question']}\n\n"
-            f"{v['scale']['description']}\n\n{self.stimuli['response_instruction']}"
+            f"{v['scale']['description']}\n\n{instruction}"
         )
         history = [ChatMessage("user", prompt)]
         result = TaskResult(
@@ -32,7 +33,7 @@ class SurveyTask(Task):
             seed=trial.seed,
             tag="ANSWER",
             allowed={str(i) for i in range(lo, hi + 1)},
-            instruction=self.stimuli["response_instruction"],
+            instruction=instruction,
         )
         result.status = coded.status
         if coded.status is Status.VALID and coded.value:

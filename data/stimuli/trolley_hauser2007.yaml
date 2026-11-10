@@ -16,6 +16,11 @@
 response_instruction: >-
   Answer as yourself. You may explain briefly, then end your reply with a final line in exactly
   this format: ANSWER: {first} or ANSWER: {second}
+# Persona arms (see framing.yaml). Not part of the verbatim Appendix check, which covers only the
+# scenario texts and questions.
+persona_response_instruction: >-
+  Answer in the first person as the participant described to you. You may explain briefly, then
+  end your reply with a final line in exactly this format: ANSWER: {first} or ANSWER: {second}
 
 variants:
   original:

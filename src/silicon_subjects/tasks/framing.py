@@ -31,9 +31,11 @@ class FramingTask(Task):
             text = f"{self.stimuli['design_disclosure'].strip()}\n\n{text}"
         return text, letter_to_kind
 
-    def render(self, trial: TrialSpec) -> tuple[str, dict[str, str]]:
+    def render(
+        self, trial: TrialSpec, persona: Persona | None = None
+    ) -> tuple[str, dict[str, str]]:
         materials, letter_to_kind = self.materials(trial)
-        return f"{materials}\n\n{self.stimuli['response_instruction']}", letter_to_kind
+        return f"{materials}\n\n{self.response_instruction(persona)}", letter_to_kind
 
     async def run(
         self, trial: TrialSpec, persona: Persona | None, provider: Provider
@@ -46,7 +48,7 @@ class FramingTask(Task):
         self, trial: TrialSpec, persona: Persona | None, provider: Provider
     ) -> TaskResult:
         system = self.system_prompt(persona)
-        prompt, letter_to_kind = self.render(trial)
+        prompt, letter_to_kind = self.render(trial, persona)
         history = [ChatMessage("user", prompt)]
         result = TaskResult(
             Status.INVALID, {}, [TurnLog("system", system), TurnLog("user", prompt)]
@@ -59,7 +61,7 @@ class FramingTask(Task):
             seed=trial.seed,
             tag="CHOICE",
             allowed=set(LABELS),
-            instruction=self.stimuli["response_instruction"],
+            instruction=self.response_instruction(persona),
         )
         result.status = coded.status
         if coded.status is Status.VALID and coded.value:

@@ -111,6 +111,24 @@ def _filter_mask(rows: pd.DataFrame, f: dict[str, Any]) -> pd.Series:
     return num.map(lambda x: bool(not math.isnan(x) and _OPS[op](x, threshold)))
 
 
+def _by_condition(
+    spec: dict[str, Any], conditions: set[str]
+) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    if "success_values" in spec or "failure_values" in spec:
+        raise ImportError_("give success/failure values either overall or by condition, not both")
+    out = []
+    for key in ("success_values_by_condition", "failure_values_by_condition"):
+        given = spec.get(key) or {}
+        if set(given) != conditions:
+            raise ImportError_(f"{key} must list exactly the conditions {sorted(conditions)}")
+        out.append({c: {str(_norm(v)) for v in vals} for c, vals in given.items()})
+    succ, fail = out
+    for c in conditions:
+        if succ[c] & fail[c]:
+            raise ImportError_(f"{c}: values listed as both success and failure")
+    return succ, fail
+
+
 def compute(
     df: pd.DataFrame, spec: dict[str, Any], kind: str
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -154,14 +172,31 @@ def compute(
     rows, conds, outcome = rows[~missing], conds[~missing], outcome[~missing]
 
     if kind == "binary":
-        succ = {str(_norm(v)) for v in spec["success_values"]}
-        fail = {str(_norm(v)) for v in spec["failure_values"]}
-        if succ & fail:
-            raise ImportError_(f"values listed as both success and failure: {sorted(succ & fail)}")
-        known = outcome.isin(succ | fail)
-        excluded["unrecognized outcome value"] += int((~known).sum())
-        rows, conds, outcome = rows[known], conds[known], outcome[known]
-        y = outcome.isin(succ).astype(int)
+        if "success_values_by_condition" in spec:
+            # The outcome answer differs by condition (for example Yes to "allow" and No to
+            # "forbid" both mean permitting the speeches).
+            by_succ, by_fail = _by_condition(spec, set(cmap.values()))
+            known = pd.Series(
+                [o in by_succ[c] | by_fail[c] for o, c in zip(outcome, conds, strict=True)],
+                index=outcome.index,
+            )
+            excluded["unrecognized outcome value"] += int((~known).sum())
+            rows, conds, outcome = rows[known], conds[known], outcome[known]
+            y = pd.Series(
+                [int(o in by_succ[c]) for o, c in zip(outcome, conds, strict=True)],
+                index=outcome.index,
+            )
+        else:
+            succ = {str(_norm(v)) for v in spec["success_values"]}
+            fail = {str(_norm(v)) for v in spec["failure_values"]}
+            if succ & fail:
+                raise ImportError_(
+                    f"values listed as both success and failure: {sorted(succ & fail)}"
+                )
+            known = outcome.isin(succ | fail)
+            excluded["unrecognized outcome value"] += int((~known).sum())
+            rows, conds, outcome = rows[known], conds[known], outcome[known]
+            y = outcome.isin(succ).astype(int)
 
         def summary(mask: pd.Series) -> dict[str, dict[str, float]]:
             return {

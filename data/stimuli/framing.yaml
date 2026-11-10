@@ -1,13 +1,30 @@
-# Gain-loss framing ("Asian disease problem"; Tversky & Kahneman, 1981) as used in Many Labs 1.
-# The original variant uses the 1981 wording. Exact ML1 wording remains unverified.
-# Counterbalancing assigns A or B to {label}.
+# Gain-loss framing ("Asian disease problem"; Tversky & Kahneman, 1981) as used in Many Labs 1
+# (Klein et al., 2014). {label} is filled with A/B after counterbalancing.
+#
+# Wording: `original` is the 1981 text without "Asian". The ML1 codebook gives the stem as
+# "Imagine that the United States is preparing for the outbreak of an unusual disease, which is
+# expected to kill 600 people. Two alternative programs to fight the disease have been proposed.
+# Choose program:", which differs from the 1981 text below ("the U.S.", "to combat", the
+# "Assume that ..." sentence and the question). The codebook gives the options only as
+# abbreviated value labels, so the full ML1 option texts are unknown (see the ml1_cleaned
+# discrepancies in data/sources/sources.yaml). The 2014 replication is reported to have removed
+# "Asian" and to have replaced "the United States" with each site's own country.
+#
+# Not yet checked against the ML1 questionnaire, so `sim doctor` blocks a confirmatory run.
+verified: false
 response_instruction: >-
   Answer as yourself in this situation. You may explain briefly, then end your reply with a
   final line in exactly this format: CHOICE: A or CHOICE: B
+# Persona arms: the system prompt casts the model as a described participant, so the instruction
+# must not say "as yourself". Same answer format, so coding is identical.
+persona_response_instruction: >-
+  Answer in the first person as the participant described to you, in this situation. You may
+  explain briefly, then end your reply with a final line in exactly this format: CHOICE: A or
+  CHOICE: B
 
 variants:
   original:
-    source: "Tversky & Kahneman (1981); Many Labs 1 (Klein et al., 2014) - VERIFY wording"
+    source: "Tversky & Kahneman (1981) wording without 'Asian'; not the Many Labs 1 questionnaire (see the header)"
     preamble: >-
       Imagine that the U.S. is preparing for the outbreak of an unusual disease, which is
       expected to kill 600 people. Two alternative programs to combat the disease have been

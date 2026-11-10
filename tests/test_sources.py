@@ -87,6 +87,21 @@ def test_committed_framing_benchmark_equals_extract_import() -> None:
     assert committed["import_provenance"]["raw_label"].startswith("ml1_cleaned")
 
 
+def test_committed_benchmarks_record_their_current_import_spec() -> None:
+    # Offline version of `sim sources verify`'s re-import check: editing an import spec without
+    # re-importing leaves a stale spec hash in the committed benchmark, which CI must catch.
+    reg = sources.load_registry(REPO)
+    committed = [b for b in reg.benchmarks if not b.sealed and (REPO / b.out).is_file()]
+    assert any(b.task == "framing" for b in committed)
+    for b in committed:
+        prov = yaml.safe_load((REPO / b.out).read_text())["import_provenance"]
+        assert prov["spec_file"] == Path(b.spec).name
+        assert prov["spec_sha256"] == sha((REPO / b.spec).read_bytes()), (
+            f"{b.out} was imported with an older {b.spec}: re-run `sim import-benchmark`, then "
+            "`sim sources audit`"
+        )
+
+
 def test_ml1_frame_and_choice_codes_follow_the_raw_items() -> None:
     d = pd.read_csv(ML1_EXTRACT, dtype=str)
     answered = d["diseaseframinga"].notna() | d["diseaseframingb"].notna()
@@ -535,7 +550,102 @@ def test_sealed_benchmark_is_rebuilt_only_if_it_matches_its_pin(tmp_path: Path) 
 def test_sealed_benchmarks_are_not_committed() -> None:
     reg = sources.load_registry(REPO)
     sealed = [b for b in reg.benchmarks if b.sealed]
-    assert {b.task for b in sealed} == {"holdout"}
+    assert {b.task for b in sealed} == {"holdout", "allowed_forbidden"}
     ignored = (REPO / ".gitignore").read_text().splitlines()
     for b in sealed:
         assert b.out.as_posix() in ignored
+
+
+# Synthetic Many Labs 1 allowed/forbidden data: per site 3 Yes / 5 No to "allow", 7 Yes / 2 No to
+# "forbid" and 1 non-responder, at 36 sites. The totals must never appear in a sealed message.
+AF_CELLS = {"allow_yes": 3, "allow_no": 5, "forbid_yes": 7, "forbid_no": 2, "no_response": 1}
+AF_SECRETS = ("108", "180", "252", "72")
+
+
+def _af_like(tmp: Path, *, bump: int = 0) -> list[dict[str, Any]]:
+    import openpyxl
+
+    sites = [f"site{i:02d}" for i in range(36)]
+    rows = ["referrer\tallowedforbiddenGroup\tallowedforbiddena\tallowedforbiddenb"]
+    for site in sites:
+        for cell, n in AF_CELLS.items():
+            for _ in range(n):
+                if cell == "no_response":
+                    rows.append(f"{site}\t0\t\t")
+                else:
+                    cond, ans = cell.split("_")
+                    code = "1" if ans == "yes" else "2"
+                    a, b = (code, "") if cond == "forbid" else ("", code)
+                    rows.append(f"{site}\t{1 if cond == 'forbid' else 0}\t{a}\t{b}")
+    data = put(tmp, "data/raw/ml1.tsv", ("\n".join(rows) + "\n").encode())
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Allowed_forbidden"
+    ws.append(
+        [
+            "Site",
+            "Count (Yes, allow)",
+            "Count (No, do not allow)",
+            "Count (Yes, forbid)",
+            "Count (No, do not forbid)",
+            "N (Excluded or no response)",
+        ]
+    )
+    cells = list(AF_CELLS.values())
+    ws.append(["Overall:", *[v * 36 for v in cells]])
+    ws.append(["Sum across samples:", *[v * 36 for v in cells]])
+    for i, site in enumerate(sites):
+        ws.append([site, cells[0] + (bump if i == 0 else 0), *cells[1:]])
+    buf = io.BytesIO()
+    wb.save(buf)
+    book = put(tmp, "data/raw/MLforR.xlsx", buf.getvalue())
+    return [
+        decl(
+            "ml1_cleaned_af",
+            "data/raw/ml1.tsv",
+            data,
+            "tsv",
+            sealed=True,
+            outcome_columns=["allowedforbiddena", "allowedforbiddenb"],
+            variables_needed=dict.fromkeys(rows[0].split("\t"), "x"),
+        ),
+        decl("ml1_workbook", "data/raw/MLforR.xlsx", book, "xlsx", tabular_profile=False),
+    ]
+
+
+def test_allowed_forbidden_checks_pass_without_revealing_values(tmp_path: Path) -> None:
+    reg = registry(tmp_path, _af_like(tmp_path))
+    res = crosschecks.run_all(reg, tmp_path)
+    for cid in ("ml1_af_mapping", "ml1_af_workbook"):
+        r = _check(res, cid)
+        assert r.passed is True, r.detail
+        assert not any(s in r.detail for s in AF_SECRETS), r.detail
+    text = json.dumps(sources.audit(tmp_path))
+    assert not any(f": {s}," in text or f": {s}}}" in text for s in AF_SECRETS)
+
+
+def test_allowed_forbidden_workbook_mismatch_fails_without_values(tmp_path: Path) -> None:
+    reg = registry(tmp_path, _af_like(tmp_path, bump=1))
+    r = _check(crosschecks.run_all(reg, tmp_path), "ml1_af_workbook")
+    assert r.passed is False and "every site x 5 cells equal" in r.detail
+    assert not any(s in r.detail for s in AF_SECRETS)
+
+
+def test_import_codes_the_outcome_by_condition(tmp_path: Path) -> None:
+    _af_like(tmp_path)
+    spec = yaml.safe_load(
+        (REPO / "data/benchmarks/import_specs/manylabs1_allowed_forbidden.yaml").read_text()
+    )
+    spec.pop("accepted_raw_sha256")
+    spec.pop("report_flags")
+    spec["base"] = str(REPO / "data/benchmarks/templates/holdout_allowed_forbidden_ml1.yaml")
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text(yaml.safe_dump(spec))
+    bench, _ = importer.build(tmp_path / "data/raw/ml1.tsv", spec_path)
+    # permits = Yes to allow, No to forbid
+    assert bench["conditions"] == {"allow": {"k": 108, "n": 288}, "forbid": {"k": 72, "n": 324}}
+    assert bench["import_provenance"]["excluded"]["missing outcome"] == 36
+    bad = dict(spec, success_values=["1"])
+    spec_path.write_text(yaml.safe_dump(bad))
+    with pytest.raises(importer.ImportError_, match="either overall or by condition"):
+        importer.build(tmp_path / "data/raw/ml1.tsv", spec_path)

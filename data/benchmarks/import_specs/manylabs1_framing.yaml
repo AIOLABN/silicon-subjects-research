@@ -25,7 +25,7 @@ min_site_n: 20          # every site has >= 31 per frame, so no site is dropped
 # Kept, not excluded: the ML1 analysts' Gain_Loss sheet and the Berkeley extract keep these 23
 # rows, so the published analysis set does too. Counted here so the decision stays visible.
 report_flags: [mturk.exclude, mturk.exclude.null]
-# Human sign-off: set verified: true (with name, date and what was checked) only after checking
-# the imported counts against the source. Until then the benchmark stays unverified and
-# `sim doctor` blocks a confirmatory run.
+# Sign-off ({verified: true, by, date, checked}) records that the imported counts were checked
+# against the source. Without it the benchmark is unverified and `sim doctor` blocks a
+# confirmatory run.
 signoff: null

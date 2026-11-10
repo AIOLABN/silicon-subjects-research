@@ -1,0 +1,32 @@
+# Import spec for the SECOND HOLD-OUT benchmark: Many Labs 1 allowed/forbidden. The version
+# mapping is established from which item each participant answered (sealed check
+# ml1_af_mapping); the counts are checked against the ML1 analysts' own Allowed_forbidden sheet
+# (sealed check ml1_af_workbook). The command prints sample sizes only.
+#   sim import-benchmark --task allowed_forbidden \
+#     --raw data/raw/ml1/ManyLabs1_Cleaned_VariableValues.tsv \
+#     --spec data/benchmarks/import_specs/manylabs1_allowed_forbidden.yaml
+source: >-
+  Many Labs 1 (Klein et al., 2014), cleaned dataset with variable values,
+  ManyLabsOpenScience/ManyLabs1 at commit 7a1334c (mirrors OSF wx7ck)
+base: data/benchmarks/templates/holdout_allowed_forbidden_ml1.yaml
+accepted_raw_sha256:
+  d07e664c137c514981ccd9abae96d24469867a37e9a93fe695a734e475fc3f05: ml1_cleaned (full raw file)
+encoding: utf-8
+encoding_errors: replace
+condition_column: allowedforbiddenGroup
+condition_values: {"0": allow, "1": forbid}   # 0 answered allowedforbiddenb, 1 answered allowedforbiddena
+# The answered item (each participant answered exactly one): 1 = Yes, 2 = No (codebook).
+derive:
+  answer: {coalesce: [allowedforbiddena, allowedforbiddenb]}
+outcome_column: answer
+success_values_by_condition:   # permits the speeches
+  allow: ["1"]    # Yes, allow
+  forbid: ["2"]   # No, do not forbid
+failure_values_by_condition:
+  allow: ["2"]
+  forbid: ["1"]
+site_column: referrer
+min_site_n: 20
+# Kept, not excluded, as in the framing import: reported so the decision stays visible.
+report_flags: [mturk.exclude, mturk.exclude.null]
+signoff: null

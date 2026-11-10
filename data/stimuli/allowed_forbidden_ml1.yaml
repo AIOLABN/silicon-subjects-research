@@ -1,0 +1,76 @@
+# HOLD-OUT stimuli (second evaluation study): the allowed/forbidden question-wording experiment
+# (Rugg, 1941) as replicated by Many Labs 1 (Klein et al., 2014).
+#
+# The questions are the item texts in the ML1 codebook (items allowedforbiddena and
+# allowedforbiddenb), verbatim. Each participant saw one of the two and answered Yes or No; there
+# is no scenario text. Not verified: how the ML1 survey laid out the item (its materials are on
+# OSF, not in hand) and the translations used at non-English sites. No paraphrases are provided:
+# writing new versions of hold-out materials is out of scope (as for the trolley hold-out).
+#
+# The answer options are counterbalanced: {first}/{second} are "Yes"/"No" or "No"/"Yes".
+response_instruction: >-
+  Answer as yourself. You may explain briefly, then end your reply with a final line in exactly
+  this format: ANSWER: {first} or ANSWER: {second}
+# Persona arms: the system prompt casts the model as a described participant (see framing.yaml).
+persona_response_instruction: >-
+  Answer in the first person as the participant described to you. You may explain briefly, then
+  end your reply with a final line in exactly this format: ANSWER: {first} or ANSWER: {second}
+
+# The outcome is permitting the speeches: Yes to "allow" and No to "forbid". With it, the
+# effect (forbid wording minus allow wording) is the allow/forbid asymmetry itself, rather than
+# the trivial difference between Yes rates to two opposite questions.
+outcome_answer:
+  forbid: "No"
+  allow: "Yes"
+
+variants:
+  original:
+    source: 'Many Labs 1 codebook, items allowedforbiddena (forbid) and allowedforbiddenb (allow), verbatim'
+    conditions:
+      forbid:
+        scenario: ''
+        question: Do you think the United States should forbid public speeches against democracy?
+      allow:
+        scenario: ''
+        question: Do you think the United States should allow public speeches against democracy?
+
+# Design-aware variant (arms with design_disclosure: true). Describes the random assignment and
+# what is held constant; never results or the expected direction of an effect.
+design_disclosure: >-
+  How this study works: each participant is randomly assigned to answer one of two versions of a
+  question about public speeches against democracy. One version asks whether the United States
+  should forbid such speeches; the other asks whether it should allow them. Everything else is
+  the same. You are answering one of the two versions.
+
+# Forecast methods. {materials} is the question exactly as participants in the condition see it;
+# {labels} are the answers in counterbalanced order. No results appear here.
+forecast:
+  population_system: >-
+    You forecast the results of behavioral experiments. Give your best calibrated estimate of
+    how the stated population actually responds.
+  population_prompt: |
+    Target population: {target_population}
+
+    Each participant in this experimental condition read the following question and answered it
+    with Yes or No:
+
+    ---
+    {materials}
+    ---
+
+    Estimate the proportion of the target population who would give each answer. Reply with a
+    JSON object with keys {labels} whose values are proportions between 0 and 1 that sum to 1.
+  persona_system: >-
+    You forecast how specific people respond in behavioral experiments. Give your best
+    calibrated probability estimate for the person described.
+  persona_prompt: |
+    {persona}
+
+    This person read the following question and answered it with Yes or No:
+
+    ---
+    {materials}
+    ---
+
+    Estimate the probability that this person would give each answer. Reply with a JSON object
+    with keys {labels} whose values are probabilities between 0 and 1 that sum to 1.

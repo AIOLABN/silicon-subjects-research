@@ -7,18 +7,19 @@ and the files in `data/raw/`. This page summarizes it. `sim sources verify` (par
 
 ## Sources
 
-| Source | Role | Status |
-|---|---|---|
-| Many Labs 1 cleaned data (ManyLabs1 repo, commit 7a1334c) | framing benchmark | verified (hash) |
-| Many Labs 1 codebook | variable definitions | verified |
-| Many Labs 1 analysts' workbook `MLforR.xlsx` | per-site cross-check | verified |
-| UC Berkeley STAT 158 `framing.csv` | secondary cross-check | verified (pinned by hash; course site not versioned) |
-| Many Labs 2 Hauser.4 CLEAN_CASE, RESULTS, R script, key table (ManyLabs2 repo, commit acef63f) | hold-out benchmark (sealed) | verified |
-| Hauser et al. (2007), Mind & Language 22 | hold-out stimuli (Appendix, scenarios 3 and 4) | verified |
-| GSS 2022 Stata archive, `.dta` and codebook (NORC) | survey personas | verified |
-| Burger (2009), American Psychologist | obedience benchmark | Source unavailable for verification |
+| Source | Role |
+|---|---|
+| Many Labs 1 cleaned data (ManyLabs1 repo, commit 7a1334c) | framing benchmark |
+| The same file, declared again as `ml1_cleaned_af` | allowed/forbidden hold-out benchmark (sealed) |
+| Many Labs 1 codebook | variable definitions |
+| Many Labs 1 analysts' workbook `MLforR.xlsx` | per-site cross-check |
+| UC Berkeley STAT 158 `framing.csv` | secondary cross-check |
+| Many Labs 2 Hauser.4 CLEAN_CASE, RESULTS, R script, key table (ManyLabs2 repo, commit acef63f) | hold-out benchmark (sealed) |
+| Hauser et al. (2007), Mind & Language 22 | hold-out stimuli (Appendix, scenarios 3 and 4) |
+| GSS 2022 Stata archive, `.dta` and codebook (NORC) | survey personas |
+| Burger (2009), American Psychologist | obedience benchmark |
 
-## Cross-checks (all pass)
+## Verification checks
 
 | Check | What it shows |
 |---|---|
@@ -27,10 +28,12 @@ and the files in `data/raw/`. This page summarizes it. `sim sources verify` (par
 | `ml1_site_codes` | 36 sites; site name and code are one-to-one. |
 | `ml1_berkeley_counts` | Berkeley extract = ML1 responders exactly, with `response = 1` meaning **risky**. |
 | `ml1_workbook_sites` | All 36 sites x 5 cells and the overall row equal the ML1 analysts' sheet. |
+| `ml1_af_mapping` (sealed) | Version code 1 = the forbid item and 0 = the allow item, nobody answered both, and answers are coded 1/2. 52 assigned participants did not answer. |
+| `ml1_af_workbook` (sealed) | All 36 sites x 5 cells and the overall row equal the ML1 analysts' `Allowed_forbidden` sheet. |
 | `ml2_hauser4_mapping` | GreaterGood answers item haus3.1 and SideEffect haus4.1 only; Yes/No equals raw code 1/2 on every row. |
 | `ml2_hauser4_results` (sealed) | N, per-condition n and all four condition x response counts reproduce the published results file. |
-| `ml2_hauser4_claims` (sealed) | The whole-percent rates quoted in the project brief match the data (stored as a hash commitment). |
-| `ml2_keytable_hauser4` | The key-table row for Hauser.4 says what this project assumes, including the malformed timing filter. |
+| `ml2_hauser4_claims` (sealed) | The published whole-percent rates recorded during study planning match the data (stored as a hash commitment). |
+| `ml2_keytable_hauser4` | The key-table row for Hauser.4 says what this project assumes and specifies the analysis settings. |
 | `ml2_hauser4_timing` | 100 responses at or under 4 s are in the published N. |
 | `hauser2007_stimuli_verbatim` | The stimuli file equals the paper's Appendix (re-extracted from the PDF; two PDF extractors agree). |
 | `extract_ml1_framing_extract` | The committed CC0 extract is reproduced byte for byte from the raw file. |
@@ -38,57 +41,20 @@ and the files in `data/raw/`. This page summarizes it. `sim sources verify` (par
 
 Pinned counts from validated source data (regression tests in `tests/test_sources.py`): gain
 1,974 of 3,174 and loss 1,038 of 3,097 chose the sure option; 6,271 of 6,344 rows used; 36
-sites. Hold-out: N = 7,923 (GreaterGood 3,968, SideEffect 3,955); outcomes sealed.
-
-## Source discrepancies
-
-1. **ML1 encoding.** 297 lines contain invalid UTF-8 (free-text columns only).
-2. **ML1 codebook.** The value labels of `gainlossgroup` / `gainlossDV` are truncated inside the
-   xlsx. The mapping comes from the raw items, and it agrees with the truncated labels.
-3. **ML1 workbook.** The `Gain_Loss` column headers are swapped and duplicated; the numbers match.
-4. **ML1 exclusion flags.** 23 rows are flagged by `mturk.exclude` / `mturk.exclude.null`. All
-   of them answered the framing item, although the codebook describes `.null` as "completed
-   zero mini-experiments". The published analysis set keeps them, and so does this import. The
-   flags are counted in the import provenance.
-5. **ML1 wording.** The codebook stem differs from the Tversky & Kahneman (1981) text used in
-   `framing.yaml`. ML1's full option texts and translations are not in any file in hand.
-6. **Berkeley polarity.** `response = 1` means risky. This is undocumented and was verified
-   numerically.
-7. **ML2 timing filter.** The key table intends "Timing > 4" but the entry is malformed, so
-   the preregistered 4-second exclusion was not applied to the published N. A sealed
-   sensitivity benchmark applies it (N = 7,823).
-8. **ML2 test sidedness.** The key table asks for a one-sided test; the published results
-   report a two-sided Fisher test.
-9. **ML2 results file.** `stat.cond3.n` / `stat.cond4.n` show the SideEffect n for the
-   GreaterGood rows. The proportions use the correct n.
-10. **ML2 wording.** ML2's exact English materials and translations are not in hand. The
-    stimuli are the 2007 Appendix text.
-11. **GSS weights.** `wtssps` covers only the 3,544 baseline respondents. The 605 AmeriSpeak
-    oversample cases need `wtssps_as` (NORC release notes).
+sites. Hold-out: N = 7,923 (GreaterGood 3,968, SideEffect 3,955); outcomes sealed. This is the
+published analysis set, which did not apply the preregistered 4-second rule: the RESULTS file
+reports `source.N.cases.excluded = 0`, and 100 of the 7,923 (GreaterGood 53, SideEffect 47)
+took under 4 s. With the rule applied (`holdout_hauser4_4s.yaml`), N = 7,823.
+Allowed/forbidden hold-out: N = 6,292 (forbid 3,170, allow 3,122; 52 assigned non-responders);
+36 sites; outcomes sealed.
 
 ## Hold-out benchmarks are not committed
 
-`data/benchmarks/holdout_hauser4.yaml` and `holdout_hauser4_4s.yaml` hold evaluation outcomes,
-so they are gitignored. `sources.yaml` commits their SHA-256 (`benchmarks[].sealed`, `sha256`).
-`sim sources fetch` then `sim sources extract` rebuilds them locally and writes them only if the
-rebuild matches the hash; the `benchmark_*` checks verify the same. They were committed before
-this change, so they are still in the Git history.
-
-## Prior exposure to hold-out results
-
-- The project brief quoted the published whole-percent rates and N.
-- The 2007 paper, which prints the original rates, was opened to extract the stimuli.
-- Participant-level outcomes were never displayed, and reproduction was checked pass/fail only.
-- No prompt, persona, model or analysis choice used these numbers.
-- The study is public, so models may have seen it in training: run the contamination probes.
-- The code review that removed the files from the repository inspected their structure only
-  (field names, n), never the counts.
-
-## Decisions required before preregistration
-
-- Sign off the framing and hold-out imports (`signoff:` in each import spec).
-- Framing wording: keep the T&K text, or adopt the ML1 codebook stem (the options stay
-  unverified either way).
-- Hold-out primary analysis set: the published N (as imported) or the 4-second rule.
-- GSS weight: keep `wtssps` (baseline sample) or switch to `wtssps_as`.
-- Verify the obedience procedure and counts against Burger (2009).
+`data/benchmarks/holdout_hauser4.yaml`, `holdout_hauser4_4s.yaml` and
+`holdout_allowed_forbidden_ml1.yaml` hold evaluation outcomes, so they are gitignored.
+`sources.yaml` commits their SHA-256 (`benchmarks[].sealed`, `sha256`). `sim sources fetch` then
+`sim sources extract` rebuilds them locally and writes them only if the rebuild matches the hash;
+the `benchmark_*` checks verify the same. The two Hauser files were committed in earlier
+versions, so they are still in the Git history; the allowed/forbidden file never was. Its raw
+data is the same public ML1 file as the framing benchmark, so the seal stops casual reading,
+not a determined reader.

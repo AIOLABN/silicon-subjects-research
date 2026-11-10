@@ -11,8 +11,16 @@ The split is by **study**, never by participants or conditions within a study (`
 | Task | Split | Exposure already recorded (`tasks[].exposure`) |
 |---|---|---|
 | `framing` (Many Labs 1) | development | Materials and the published direction of the effect were known while prompts and paraphrases were written. Human counts are now imported from the participant-level data (36 sites). |
-| `obedience` (Burger 2009) | development | Published percentages shaped the endpoint, the second condition and the power analysis. |
-| `holdout` (Many Labs 2 Hauser.4: scenarios 3 and 4 of Hauser et al., 2007) | evaluation | The project brief quoted the published whole-percent rates; the 2007 paper (opened to extract the stimuli) prints the original rates. Participant-level outcomes were never displayed and nothing was tuned on them. **Public study: may be in training data.** |
+| `obedience` (Burger 2009) | development | Published percentages shaped the endpoint, the second condition and the power analysis. **Not untouched.** |
+| `holdout` (Many Labs 2 Hauser.4: scenarios 3 and 4 of Hauser et al., 2007) | evaluation | Published whole-percent rates were known during study planning; the 2007 paper consulted for the stimuli also reports the original rates. Participant-level outcomes were never displayed and nothing was tuned on them. **Public study: may be in training data.** |
+| `allowed_forbidden` (Many Labs 1: Rugg, 1941) | evaluation | Added as a second held-out study after the other designs were set. The classic direction and ML1's report that it replicated were known. Participant-level outcomes were never displayed (import and checks are pass/fail only). Same ML1 participants as the framing benchmark, a different study's outcome. **Public study: may be in training data.** |
+
+Two held-out studies of different kinds (a moral dilemma and a political attitude question) are
+the minimum for a claim that a method transfers; one study is a case, not a pattern. Both
+predate any current model's training, so this tests transfer to studies the method was not
+tuned on, not prediction of unpublished results. Studies released after the models' training
+cutoffs would be the stronger test (record `training_cutoff` for each model; `sim probes` writes
+`cutoff_check.csv`).
 
 Enforcement:
 
@@ -36,6 +44,9 @@ Enforcement:
 - **Prompts, models, persona fields, calibration and exclusion rules** may be chosen using
   development studies only. Any change needs a re-freeze, which creates a new plan version.
   Runs keep the version they were collected under.
+- **Only evaluation studies are confirmatory.** A development study's results informed the
+  design, so agreement with it is a check of the setup. `sim doctor` fails if a development
+  study has `confirmatory_test: true`.
 
 ## 2. Methods (one arm = one separately identified method)
 
@@ -47,12 +58,26 @@ Enforcement:
 
 - **Option order** is counterbalanced for all methods. Letters are mapped back to "sure" and
   "risky" before anything is aggregated.
+- **Persona instructions.** A persona arm's system prompt casts the model as the described
+  participant, so its task instruction is `persona_response_instruction` ("answer in the first
+  person as the participant described to you"), never the baseline's "answer as yourself". The
+  answer format is identical, so coding is too. A persona arm on a task without it fails when
+  the plan is built.
+- **Outcome coding by condition.** A yes/no task's outcome is "Yes" unless the stimuli map a
+  condition to the other answer (`outcome_answer`). Allowed/forbidden uses this: the outcome is
+  permitting the speeches (Yes to "allow", No to "forbid"), so its effect is the allow/forbid
+  asymmetry rather than the trivial gap between two opposite questions.
 - **Design disclosure** (`design_disclosure: true`) prepends a description of the random
   assignment and of what is held constant. It never mentions results or the expected direction.
   This follows Gui & Toubia's argument that unblinding the design can reduce unintended
   confounding; whether it helps here is an open question.
-- **Obedience** role-play never gets design disclosure. Forecasting obedience is a separate,
-  optional extension (`forecast_extension: true`, `population_forecast` only), off by default.
+- **Obedience** role-play never gets design disclosure. Forecasting obedience is an extension
+  (`forecast_extension: true`, `population_forecast` only), switched on in the study. The
+  role-play is a multi-turn conversation that costs about 30 one-turn trials, and its human
+  benchmark has 70 people, which bounds the precision of any comparison: at p = 0.7 the
+  model-vs-human SE is 0.097 with 50 model trials per condition and 0.086 with 100. The study
+  therefore runs 50 per condition (25 per paraphrase), no persona arms on obedience, and the
+  cheap population forecasts.
 
 **Forecast output contract** (`forecast.py`):
 
@@ -93,8 +118,6 @@ Enforcement:
 - **Population match.** National GSS weights do **not** represent Burger's screened volunteers
   or the Many Labs samples (`benchmark.target_population_note`). Persona-based predictions
   carry that mismatch, and it is reported rather than corrected.
-- **Missing data:** the GSS microdata isn't in the repository (see `data/survey/README.md`).
-  Until it's provided, the survey-persona arms can't run, and `sim plan` says so.
 
 ## 4. Evaluation (`evaluation.py`, report sections A–E)
 
@@ -115,6 +138,38 @@ These are computed for every method, including ones that fail:
   sealed or missing. Other tasks' primary-arm effects are descriptive
   (`model_rd_inside_human_ci`) and never claim equivalence. Report section 10 and `sim doctor`
   give the primary test's power if the model were exact, at alpha and at alpha / family size.
+- **Primary test** (`analysis.primary_test`, report section 1). Under `joint` (the default) a
+  study counts as reproduced only if the effect (Cohen's h, margin `margin_cohens_h`) AND every
+  condition level (margin `margin_proportion`) are each equivalent by TOST. A model can match
+  the gap between conditions while missing both levels (90% vs 60% against 60% vs 30%); the
+  joint test does not count that as a match. The claim's p-value is the largest component
+  p-value: an intersection-union test, valid at alpha with no correction among the components
+  because every component must succeed. Holm then runs across the planned family, one claim per
+  model and study. The components are reported in sections 1a and 2. Its power is bounded below
+  by 1 - sum of the components' failure probabilities (levels at the worst case p = 0.5, so the
+  bound never uses sealed outcomes). `primary_test: effect` tests the effect alone.
+- **The model must show an effect** (`analysis.primary_requires_effect`, on in the study).
+  Equivalence within h = 0.20 does not show that the model has an effect: if the human effect
+  is itself near the margin, a model with a much weaker effect, or none, is "equivalent". The
+  claim therefore has one more component, `effect_present`: a one-sided z test that the model's
+  own effect differs from zero in the direction of the human effect. It joins the same
+  intersection-union test, so nothing else changes. Its power depends on the size of the human
+  effect, which is sealed, so it is planned as a threshold: `sim doctor` and report section 10
+  give the smallest human effect at which a model matching it exactly passes 80% of the time
+  (about h = 0.15 at 900 per condition and a family of 6). The requirement presumes the human
+  effect is real; both held-out studies were reported as replicated.
+- **Power when the model is close but not exact** (report section 11, `sim doctor`). "Power for
+  a perfect model" is a best case. A model's response distribution is fixed, so what matters is
+  how large a gap the test tolerates. At 900 per condition and the strictest Holm threshold, a
+  true gap of half the margin (h = 0.10 on the effect, 5 points on every level) passes the
+  effect component about 30% of the time and both levels about 35 to 40%. A failed primary test
+  therefore does not show that a model is outside the margins; read it with the estimates and
+  intervals in sections 1a and 2.
+- **Refusals and the primary test.** The primary test uses valid responses only. Section 1
+  also recomputes each claim with every refusal counted as outcome 0 and as outcome 1
+  (`reproduces_refusals_as_0`, `reproduces_refusals_as_1`, `robust_to_refusals`) and the report
+  warns when the result changes. This is a sensitivity check; `reproduces` is the preregistered
+  result.
 - **Effect-inflation ratio** (a secondary diagnostic): flagged `undefined` when the human effect
   is 0 and `unstable` when the human effect isn't distinguishable from 0. Sign disagreements are
   flagged separately.
@@ -151,7 +206,8 @@ These are computed for every method, including ones that fail:
   outcomes to pair predictions with.
 - **Human replication range:** the spread of effects across labs, when a benchmark lists
   `sites` (framing: 36 Many Labs 1 sites; hold-out: 60 Many Labs 2 sites with at least 15 per
-  condition, sealed like the rest of the hold-out). This is not a test–retest noise ceiling.
+  condition; allowed/forbidden: 36 Many Labs 1 sites; the held-out ranges are sealed like the
+  rest of those benchmarks). This is not a test–retest noise ceiling.
 - **Subgroups:** computed when a benchmark lists `subgroups`. Currently none.
 
 ## 5. Calibration (disabled)
@@ -160,14 +216,37 @@ These are computed for every method, including ones that fail:
   with one point per independent **development** study (`sim calibrate`).
 - **Frozen before evaluation:** the parameter file is covered by the preregistration, and raw
   and adjusted effects are both reported.
-- **Why it's disabled:** only 2 development studies exist, and fitting needs at least 5
-  (`min_development_studies`), because a two-point line can't be checked.
-- **Data needed:** at least 5 further development studies with materials and human effects,
-  separate from the evaluation studies. Candidates include other Many Labs effects or other
-  studies from the Ashokkumar et al. archive.
 - No universal correction factor (such as "divide by two") is applied.
 
-## 6. Research anchors
+## 6. Models, reproducibility and cost
+
+- **Seeds and sampling.** The Claude API takes no seed and no sampling parameters (the config
+  rejects `sampling` for Anthropic models), so repeated calls are independent draws and a rerun
+  cannot reproduce a reply. Each trial record says whether its seed reached the model
+  (`generation.seed_sent`; the run manifest has `seed_sent_to_provider`). For Claude the seed only
+  identifies the trial, and the stored transcript is the record of what the model said.
+- **More than one developer.** Two Claude models share training data and safety tuning, so
+  agreement between them is not independent evidence (`sim doctor` warns when every model has
+  one provider). The study therefore adds OpenAI's GPT-6.1 Sol through `provider:
+  openai_compatible`, with its own key variable (`api_key_env: OPENAI_API_KEY`), OpenAI's
+  reply-length parameter (`max_tokens_param: max_completion_tokens`), and its price
+  (`price_usd_per_mtok`) so the estimate and `--max-cost` cover it. `effort` is sent only to
+  Claude, so GPT-6.1 Sol runs at OpenAI's default reasoning effort; refusals in OpenAI's
+  `refusal` field are recorded as platform refusals. Whether this model accepts `seed` and strict
+  JSON-schema output is unverified until the pilot. The third model enlarges the confirmatory
+  family to 3 models x 2 studies, so the held-out studies run 900 responses per condition to keep
+  the joint test's guaranteed power at 0.80 at the strictest Holm threshold.
+- **Cost.** `sim estimate` multiplies the plan by tokens per trial. Before a pilot these are
+  assumptions (`costs.ASSUMED_TOKENS`); `sim estimate --from-run <pilot>` replaces them with the
+  pilot's measured averages (format repairs and retried attempts included) for the same model,
+  task and method, uses a measured one-turn task as a proxy for another, and never lets the
+  multi-turn obedience role-play stand in for a one-turn task or the reverse. It reports a
+  typical and a cautious figure (90th-percentile tokens where measured; doubled output where
+  assumed). Failed trials are not included. `sim run --max-cost` caps the run, not the
+  invocation: a resumed run starts from the cost already recorded in its trial and error
+  records, so reaching the cap needs a higher cap to continue.
+
+## 7. Research anchors
 
 The following studies motivate the secondary comparisons.
 
@@ -187,18 +266,3 @@ The following studies motivate the secondary comparisons.
 - **Broska, Howes & van Loon (2025), mixed subjects design:** treat model predictions as
   informative observations combined with a human gold standard, using prediction-powered
   inference. See `docs/mixed_subjects.md`; not implemented.
-
-## 7. Readiness
-
-| Component | Status |
-|---|---|
-| Integrity: plan versions, verified confirmatory claims, sealing, run identity | Ready (tested offline) |
-| Probability forecasts for framing (population, persona) | Ready to evaluate after the live smoke test |
-| Design-aware framing prompt | Ready to evaluate after the live smoke test |
-| GSS persona grounding comparison | Ready: 50 respondents drawn from GSS 2022 (see data/survey/README.md) |
-| Hold-out (Many Labs 2 Hauser.4) | Imported and sealed; stimuli verified against the paper; Yes/No task type |
-| Evaluation tables | Ready, including two-arm tests and distortion flags. Framing counts imported, awaiting human sign-off. Burger counts unverified (paper not obtained). |
-| Source provenance | `sim sources verify`: hashes, cross-checks, byte-identical re-imports (`make verify`) |
-| Obedience forecasting | Experimental, off by default |
-| Calibration | Disabled: too few development studies |
-| Mixed subjects / prediction-powered inference | Design only (docs/mixed_subjects.md) |

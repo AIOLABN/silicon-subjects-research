@@ -2,37 +2,53 @@ study_id: smoke-live
 seed: 20261012
 
 models:
+  # Training cutoffs from Anthropic's model documentation (month precision).
   - id: opus55
     provider: anthropic
     model: claude-opus-5-5
     max_tokens: 16000
     effort: medium
-    training_cutoff: null
+    training_cutoff: "2026-06"
   - id: sonnet55
     provider: anthropic
     model: claude-sonnet-5-5
     max_tokens: 16000
     effort: medium
-    training_cutoff: null
+    training_cutoff: "2026-06"
+  # A model from another developer, so agreement between models is not one developer's training
+  # and safety tuning twice. The pilot checks that it accepts `seed` and strict JSON-schema
+  # output on Chat Completions. Its reasoning effort is OpenAI's default (`effort` is sent only
+  # to Claude models).
+  - id: gpt61sol
+    provider: openai_compatible
+    base_url: https://api.openai.com/v1
+    model: gpt-6.1-sol
+    api_key_env: OPENAI_API_KEY
+    max_tokens: 16000
+    max_tokens_param: max_completion_tokens
+    price_usd_per_mtok: [2.0, 10.0]   # standard API pricing, input, output
+    training_cutoff: "2026-04-30"
 
 tasks:
   - id: framing
     split: development
     exposure: >-
-      The framing materials and published direction of the effect were known during prompt design. The human counts were subsequently imported from the Many Labs 1 participant data.
+      The Many Labs 1 framing materials and published effect direction were known while the prompts and paraphrases were written. Human counts have since been imported and cross-checked.
     kind: framing
     stimuli: data/stimuli/framing.yaml
     benchmark: data/benchmarks/framing_manylabs1.yaml
     counterbalance_option_order: true
     materials_first_public: "1981-01-30"
+    confirmatory_test: false
   - id: obedience
     split: development
     exposure: >-
-      Burger's published percentages (70.0% base, 63.3% modeled refusal) informed the 150-volt endpoint, inclusion of the second condition and the power analysis.
+      Burger's (2009) published percentages (70.0% base, 63.3% modeled refusal) informed the design: the 150-volt endpoint, the second condition and the power analysis. Not untouched.
     kind: obedience
     stimuli: data/stimuli/obedience.yaml
     benchmark: data/benchmarks/obedience_burger2009.yaml
     materials_first_public: "2009-01-01"
+    forecast_extension: true
   - id: holdout
     split: evaluation
     exposure: >-
@@ -59,16 +75,24 @@ personas:
     - name: region_of_the_US
       levels: {Northeast: 0.17, Midwest: 0.21, South: 0.38, West: 0.24}
 
+# The pilot runs one or two trials of every kind the study runs, so `sim estimate --from-run`
+# can replace the assumed tokens with measured ones (the hold-out stays switched off).
 arms:
   - id: baseline
     persona: false
     n_per_cell: 1
     role: primary
+  - id: persona
+    persona: true
+    replicates_per_profile: 1
+    profiles_limit: 2
+    tasks: [framing]
+    role: secondary
   - id: population_forecast
     method: population_forecast
     persona: false
     n_per_cell: 1
-    tasks: [framing]
+    tasks: [framing, obedience]
     role: secondary
   - id: persona_forecast
     method: persona_forecast

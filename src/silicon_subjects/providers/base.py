@@ -44,6 +44,9 @@ def parse_retry_after(value: str | None) -> float | None:
 
 class Provider(Protocol):
     name: str
+    # Whether `seed` reaches the model. When it does not, a trial's seed only identifies it, and
+    # the stored transcript is the record of what the model said.
+    sends_seed: bool
 
     async def complete(
         self,

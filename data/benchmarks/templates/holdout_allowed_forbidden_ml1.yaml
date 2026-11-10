@@ -1,0 +1,38 @@
+# Hand-written part of the SECOND HOLD-OUT (evaluation) benchmark. The importer adds the human
+# counts from the Many Labs 1 data and writes ../holdout_allowed_forbidden_ml1.yaml.
+#
+# SEALED: the generated file holds evaluation outcomes. Do not open it, print it or use it while
+# developing prompts, personas, models or analysis choices. The analysis reads it only for a
+# verified confirmatory run (or an explicit, labeled reanalysis) after `sim freeze`.
+id: manylabs1_allowed_forbidden
+citation: >-
+  Klein, R. A., et al. (2014). Investigating variation in replicability: A "many labs"
+  replication project. Social Psychology, 45(3), 142-152.
+  https://doi.org/10.1027/1864-9335/a000178 (replication of Rugg, D., 1941, Experiments in
+  wording questions: II, Public Opinion Quarterly, 5(1), 91-92, https://doi.org/10.1086/265467)
+source_data: >-
+  ManyLabsOpenScience/ManyLabs1 at commit 7a1334c, Data/Tab.delimited.Cleaned.dataset.WITH.variable.values.dat
+  (sha256 d07e664c...; see data/sources/provenance.json, source ml1_cleaned_af)
+type: binary
+outcome: permits_speeches   # 1 = answered Yes to "allow" or No to "forbid"
+# Headline effect = P(permits | forbid wording) - P(permits | allow wording): the direction of
+# the allow/forbid asymmetry (people would "not forbid" more readily than "allow"), fixed before
+# any model output.
+contrast: [forbid, allow]
+conditions:   # filled by the importer
+  allow: {k: null, n: null}    # "Do you think the United States should allow ...?"
+  forbid: {k: null, n: null}   # "Do you think the United States should forbid ...?"
+recognition_keywords: ["rugg", "hippler", "schwarz", "many labs", "forbid/allow asymmetry"]
+
+# For forecast prompts: no results, no study names and no percentages. Same participants and
+# sites as the Many Labs 1 framing benchmark (each ML1 participant did every ML1 study).
+target_population: >-
+  Adult volunteers, mostly university students plus large online samples, at 36 data-collection
+  sites. About four in five took part at sites in the United States and the rest at sites in
+  other countries; about half took part online and half in a lab.
+target_population_note: >-
+  National GSS weights do not represent this population; persona-based methods carry that
+  mismatch and it is reported, not corrected.
+sites: []      # filled by the importer (sites with at least 20 per condition)
+subgroups: []
+sealed_outcomes: true

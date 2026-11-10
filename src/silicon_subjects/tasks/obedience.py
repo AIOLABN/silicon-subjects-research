@@ -40,7 +40,7 @@ class ObedienceTask(Task):
         cond = self.stimuli["conditions"][trial.condition]
         start_v: int = cond["participant_starts_at"]
         end_v: int = self.stimuli["final_decision_volts"]
-        instruction = self.stimuli["response_instruction"]
+        instruction = self.response_instruction(persona)
         prods: list[str] = self.stimuli["prods"]
 
         result = TaskResult(Status.VALID, {}, [TurnLog("system", system)])

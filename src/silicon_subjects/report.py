@@ -49,20 +49,40 @@ SECTIONS = [
     ),
     ("subgroup_evaluation", "E. Subgroups (where human subgroup data exist)", ""),
     (
+        "primary_agreement",
+        "1. Primary: does the model reproduce the study?",
+        "One confirmatory claim per model and study (`analysis.primary_test`). Under `joint`, a "
+        "study counts as reproduced only if the effect (section 1a) AND every condition level "
+        "(section 2) are each equivalent within their preregistered margins: `joint_p` is the "
+        "largest component p-value (intersection-union test, so the components need no "
+        "correction among themselves), Holm-corrected across the planned family (`family`; its "
+        "size is fixed by the plan, so a sealed comparison still counts). `reproduces` is the "
+        "confirmatory result; `missing` names components that could not be computed. Under "
+        "`effect`, only the effect is tested. With `analysis.primary_requires_effect`, the "
+        "component `effect_present` also requires the model's own effect to differ from zero in "
+        "the human direction (one-sided z test), so a model with no effect cannot pass because "
+        "the human effect is small. The test uses valid responses only: `refusals` counts "
+        "refusals among valid and refused responses, and `reproduces_refusals_as_0` / "
+        "`reproduces_refusals_as_1` recompute the claim with every refusal counted as outcome 0 "
+        "or 1. They are a sensitivity check (`robust_to_refusals`), not the confirmatory result.",
+    ),
+    (
         "primary_effect_agreement",
-        "1. Primary: does the simulated effect match the human effect?",
+        "1a. Does the simulated effect match the human effect?",
         "Model effect vs human effect (Cohen's h for binary, Hedges' g for continuous). `delta` = "
-        "model - human; `equivalent` = TOST within the preregistered margin, Holm-corrected across "
-        "the planned confirmatory family (`family`; its size is fixed by the plan, so a sealed "
-        "comparison still counts). Tasks with `confirmatory_test: false` are descriptive only: "
-        "see `model_rd_inside_human_ci`. AI uncertainty counts independent units "
-        "(`se_method`): trials, or personas in persona arms (cluster-robust).",
+        "model - human; `tost_p` = TOST within the preregistered margin. Under the joint primary "
+        "test these rows are components of section 1 and `equivalent` is uncorrected; under "
+        "`primary_test: effect` `equivalent` is Holm-corrected across the planned family. Tasks "
+        "with `confirmatory_test: false` are descriptive only: see `model_rd_inside_human_ci`. "
+        "AI uncertainty counts independent units (`se_method`): trials, or personas in persona "
+        "arms (cluster-robust).",
     ),
     (
         "level_agreement",
         "2. Condition-level agreement",
         "Proportion (or mean) in each condition vs the human sample, with Newcombe CIs that "
-        "include human sampling uncertainty. Secondary: `tost_p` is uncorrected.",
+        "include human sampling uncertainty. `tost_p` is uncorrected; rows labelled as "
+        "components (`family`) enter the joint test in section 1, the rest are secondary.",
     ),
     (
         "cells",
@@ -91,15 +111,30 @@ SECTIONS = [
         "`mdd_80pct_power`: smallest model-human gap detectable with 80% power. "
         "`tost_power_if_exact`: probability of demonstrating equivalence even if the model were "
         'exactly right; values well below 0.8 mean the design cannot support a "match" claim. '
-        "This is the secondary per-condition level test; the primary test is in section 10.",
+        "This is the per-condition level test (a component of the joint primary test); the "
+        "power of the primary test is in section 10.",
     ),
     (
         "primary_power",
         "10. Power of the primary test",
-        "Probability that the primary effect-equivalence test (Cohen's h) succeeds if the model "
-        "were exactly right, at alpha and at the strictest Holm threshold (alpha / family size). "
-        "Needs only sample sizes, so it is shown for sealed studies too. Persona arms count "
-        "personas as units (conservative).",
+        "Probability that the effect-equivalence test (Cohen's h) succeeds if the model were "
+        "exactly right, at alpha and at the strictest Holm threshold (alpha / family size). Under "
+        "the joint test, `joint_power_at_holm_strictest_lower_bound` adds the level components "
+        "(worst case p = 0.5) with a Bonferroni bound. Needs only sample sizes, so it is shown "
+        "for sealed studies too. Persona arms count personas as units (conservative). With "
+        "`primary_requires_effect`, `effect_present_min_h_for_80pct_at_holm_strictest` is the "
+        "smallest human effect (Cohen's h) at which a model matching it exactly would pass that "
+        "component 80% of the time; the power columns do not include that component.",
+    ),
+    (
+        "primary_power_under_bias",
+        "11. Power of the primary test when the model is close but not exact",
+        "Section 10 assumes a model with no gap at all. Here the true model-human gap is set to a "
+        "fraction of the margin (`gap_as_fraction_of_margin`) and each row gives the chance that "
+        "the effect component, and all level components together, still show equivalence at the "
+        "strictest Holm threshold. Use it to read a failed primary test: where this power is "
+        "low, 'not reproduced' is also what a model inside the margins would usually get, so it "
+        "is not evidence that the model is outside them. Needs only sample sizes.",
     ),
 ]
 

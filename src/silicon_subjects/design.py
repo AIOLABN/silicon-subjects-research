@@ -34,6 +34,8 @@ def build_manifest(
     for model, task, arm in itertools.product(cfg.models, tasks.values(), cfg.arms):
         if arm.tasks is not None and task.id not in arm.tasks:
             continue
+        if arm.persona and arm.method == "choice":
+            task.response_instruction(Persona("check", {}))
         for condition, variant in itertools.product(task.conditions(), _arm_variants(arm, task)):
             cell = (model.id, task.id, arm.id, condition, variant)
             rng = random.Random(derive_seed(cfg.seed, *cell))

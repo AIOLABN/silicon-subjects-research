@@ -12,13 +12,14 @@ from .base import ChatMessage, Completion, TransientProviderError, parse_retry_a
 
 class OpenAICompatibleProvider:
     name = "openai_compatible"
+    sends_seed = True
 
     def __init__(self, spec: ModelSpec, timeout_s: float) -> None:
         if not spec.base_url:
             raise ValueError(f"model {spec.id!r}: openai_compatible requires base_url")
         self._spec = spec
         headers = {}
-        if key := os.environ.get("OPENAI_COMPATIBLE_API_KEY"):
+        if spec.key_env and (key := os.environ.get(spec.key_env)):
             headers["Authorization"] = f"Bearer {key}"
         self._client = httpx.AsyncClient(base_url=spec.base_url, timeout=timeout_s, headers=headers)
 
@@ -32,7 +33,7 @@ class OpenAICompatibleProvider:
     ) -> Completion:
         body: dict[str, Any] = {
             "model": self._spec.model,
-            "max_tokens": self._spec.max_tokens,
+            self._spec.max_tokens_param: self._spec.max_tokens,
             "seed": seed,
             "messages": [{"role": "system", "content": system}]
             + [{"role": m.role, "content": m.content} for m in messages],
@@ -57,11 +58,13 @@ class OpenAICompatibleProvider:
         data = r.json()
         choice = data["choices"][0]
         usage = data.get("usage") or {}
+        # OpenAI reports a refusal in `message.refusal` (content is then empty), not as a reason.
+        refusal = choice["message"].get("refusal")
         return Completion(
-            text=choice["message"].get("content") or "",
+            text=choice["message"].get("content") or refusal or "",
             stop_reason=choice.get("finish_reason"),
             served_model=data.get("model"),
-            platform_refusal=choice.get("finish_reason") == "content_filter",
+            platform_refusal=bool(refusal) or choice.get("finish_reason") == "content_filter",
             input_tokens=usage.get("prompt_tokens"),
             output_tokens=usage.get("completion_tokens"),
             latency_s=time.perf_counter() - start,

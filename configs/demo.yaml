@@ -19,7 +19,7 @@ tasks:
   - id: framing
     split: development
     exposure: >-
-      The framing materials and published direction of the effect were known during prompt design. The human counts were subsequently imported from the Many Labs 1 participant data.
+      The Many Labs 1 framing materials and published effect direction were known while the prompts and paraphrases were written. The demo benchmark is synthetic.
     kind: framing
     stimuli: data/stimuli/framing.yaml
     benchmark: data/benchmarks/demo/framing_synthetic.yaml
@@ -28,7 +28,7 @@ tasks:
   - id: obedience
     split: development
     exposure: >-
-      Burger's published percentages (70.0% base, 63.3% modeled refusal) informed the 150-volt endpoint, inclusion of the second condition and the power analysis.
+      Burger's (2009) published percentages (70.0% base, 63.3% modeled refusal) informed the design: the 150-volt endpoint, the second condition and the power analysis. Not untouched.
     kind: obedience
     stimuli: data/stimuli/obedience.yaml
     benchmark: data/benchmarks/obedience_burger2009.yaml

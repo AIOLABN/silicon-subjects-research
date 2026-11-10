@@ -11,6 +11,7 @@ from .base import ChatMessage, Completion
 
 class MockProvider:
     name = "mock"
+    sends_seed = True
 
     def __init__(self, spec: ModelSpec) -> None:
         self._spec = spec

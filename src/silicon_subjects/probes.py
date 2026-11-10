@@ -74,7 +74,7 @@ def stimulus_text(task: Task, variant: str = "original") -> str:
         return str(v["intro"])
     if task.kind == "vignette":
         c = v["conditions"][task.contrast[0]]
-        return f"{c['scenario']} {c['question']}"
+        return f"{c.get('scenario') or ''} {c['question']}".strip()
     return " ".join(str(x) for x in v["conditions"].values())
 
 

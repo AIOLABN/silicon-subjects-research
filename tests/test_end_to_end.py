@@ -37,15 +37,23 @@ async def test_mock_run_resume_and_analysis(demo_cfg: StudyConfig) -> None:
     assert len(ids) == len(set(ids)) == len(trials)
 
     out_run = analysis.analyze_run(out)
-    primary = out_run.result.tables["primary_effect_agreement"]
+    primary = out_run.result.tables["primary_agreement"]
     assert set(primary["task_id"]) == {"framing", "obedience", "holdout"}
     family = primary[primary["family"].str.startswith("confirmatory")]
     assert set(family["task_id"]) == {"framing", "holdout"} and set(family["arm_id"]) == {
         "baseline"
     }
-    assert family["tost_p_holm"].notna().all()
-    descriptive = primary[primary["task_id"] == "obedience"]
+    assert family["joint_p_holm"].notna().all()
+    assert set(family["components"]) == {
+        "effect, level_gain, level_loss",
+        "effect, level_greater_good, level_side_effect",
+    }
+    effects = out_run.result.tables["primary_effect_agreement"]
+    components = effects[effects["family"] == analysis.JOINT_COMPONENT]
+    assert set(components["task_id"]) == {"framing", "holdout"}
+    descriptive = effects[effects["task_id"] == "obedience"]
     assert descriptive["tost_p_holm"].isna().all() and not descriptive["equivalent"].any()
     assert descriptive["model_rd_inside_human_ci"].notna().all()
+    assert not primary[primary["task_id"] == "obedience"]["reproduces"].any()
     assert out_run.report.exists()
     assert out_run.provenance["analysis_status"] == "confirmatory"

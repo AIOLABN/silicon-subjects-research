@@ -14,6 +14,7 @@ data/raw/*
 
 data/benchmarks/holdout_hauser4.yaml
 data/benchmarks/holdout_hauser4_4s.yaml
+data/benchmarks/holdout_allowed_forbidden_ml1.yaml
 
 prereg.demo-mock.runs.jsonl
 prereg.demo-mock.lock*.json

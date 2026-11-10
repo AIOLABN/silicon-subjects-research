@@ -9,6 +9,9 @@ from .base import ChatMessage, Completion, TransientProviderError, parse_retry_a
 
 class AnthropicProvider:
     name = "anthropic"
+    # The Messages API has no seed parameter (and this config pins no sampling parameters), so
+    # repeated calls are independent draws and reruns cannot reproduce a reply.
+    sends_seed = False
 
     def __init__(self, spec: ModelSpec, timeout_s: float) -> None:
         import anthropic

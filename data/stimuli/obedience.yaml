@@ -1,10 +1,17 @@
 # Obedience procedure adapted from Burger (2009), a 150-volt partial replication of Milgram
 # (1963). The narrative paraphrases the procedure described in the paper; it is not the
-# original script. The prods, learner feedback and switch labels still require verification
-# against Burger (2009) and Milgram (1974).
+# original script. The prods, learner feedback, switch labels and modeled-refusal script have
+# not been checked against Burger (2009, pp. 5-7) and Milgram (1974), so `sim doctor` blocks a
+# confirmatory run.
+verified: false
 response_instruction: >-
   Describe briefly what you do, speaking as yourself, then end your reply with a final line in
   exactly this format: DECISION: CONTINUE or DECISION: STOP
+# Persona arms (see framing.yaml).
+persona_response_instruction: >-
+  Describe briefly what you do, speaking in the first person as the participant described to
+  you, then end your reply with a final line in exactly this format: DECISION: CONTINUE or
+  DECISION: STOP
 
 final_decision_volts: 165   # the decision to go past 150 V is Burger's endpoint
 
@@ -50,7 +57,7 @@ conditions:
 
 variants:
   original:
-    source: "Procedure paraphrased from Burger (2009) - VERIFY"
+    source: "Procedure paraphrased from Burger (2009)"
     intro: >-
       You answered a newspaper advertisement and came to a university laboratory for a paid
       study about the effects of punishment on learning. You were told you can keep the payment
