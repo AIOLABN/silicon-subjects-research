@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "silicon-subjects"
 version = "0.1.0"
-description = "Research software for comparing language model predictions with published human behavioral benchmarks."
+description = "An experiment testing whether AI makes the same choices people did in behavioural studies."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Adham Mater" }]

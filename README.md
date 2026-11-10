@@ -1,10 +1,14 @@
 # Silicon Subjects
 
-How closely do language models reproduce human choices, and when could their predictions reduce the burden on research participants? Adham Mater examines these questions in Silicon Subjects and the Limits of Simulating Human Behavior.
+In this experiment, we’re testing whether AI can replicate human behaviour in studies. We give a model the same kind of choice a participant faced and ask it to pick an option. Then we compare its choices with what people actually did.
 
-The October 2026 thesis describes three experiments. The current software extends that design with a second held-out task and a third model. It uses Many Labs 1 gain–loss framing and Burger’s 150-volt obedience replication for development. The held-out comparisons are the Many Labs 2 Hauser.4 moral-judgment task and the Many Labs 1 allowed/forbidden question-wording task.
+Take a study where a disease is expected to kill 600 people. One group hears that a treatment will save 200 people for sure. Another hears that 400 people will die for sure. The outcome is the same, but the wording changes how often people take the safe option over a gamble. Does changing a few words shift the AI’s choices by about as much?
 
-**Study status.** This release contains the research design, imported framing data, a fixed General Social Survey (GSS) panel and an offline demonstration. Confirmatory model results are pending. The [source record](docs/sources.md) identifies the wording, benchmark and sampling decisions that remain open.
+In a separate part of the experiment, we ask the model how it thinks people answered. It might guess that most people took the gamble and still pick the safe option when it has to choose for itself.
+
+We use the framing and obedience studies to develop the experiment. For the main test, we use a moral dilemma and a survey question about allowing or forbidding public speeches.
+
+The code and an offline demo are here. We haven’t reported results from the main experiment yet.
 
 ## Setup
 
@@ -28,7 +32,7 @@ sim run -c configs/demo.yaml --run-id demo
 sim analyze demo -c configs/demo.yaml
 ```
 
-The report is `results/demo/report.md`; tables are in `results/demo/analysis/`. The demo uses mock models and synthetic benchmarks. Its output is a software check, not a thesis finding. `make demo` runs the same pipeline in a POSIX shell.
+Open `results/demo/report.md` for the report and `results/demo/analysis/` for the tables. The demo uses mock models and made-up data so you can try it offline. `make demo` runs the same pipeline in a POSIX shell.
 
 An unchanged run ID resumes unfinished trials. After changing the source or inputs, use `sim freeze -c configs/demo.yaml --force` and a new run ID. Later confirmatory collections of the same frozen plan require `--replication`.
 

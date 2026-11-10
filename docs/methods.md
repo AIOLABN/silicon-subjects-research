@@ -1,8 +1,6 @@
-# Prediction methods and how they are evaluated
+# How we compare the models with people
 
-This project asks **which ways of using a language model generalize to human results the model
-has not been tuned on**. The methods below are candidates, not improvements. No method counts
-as better until it is better on held-out evaluation studies under a frozen plan.
+We ask each model to make a choice, then count how often it picks each option. We also run a separate version where the model estimates how people would answer. We compare both sets of answers with the published human results. We choose the prompts using two development studies and use two held-out studies to test how well those choices carry over.
 
 ## 1. Development vs evaluation studies
 
