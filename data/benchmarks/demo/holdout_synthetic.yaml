@@ -1,0 +1,22 @@
+# SYNTHETIC hold-out benchmark for the offline demo ONLY. The numbers are invented so that the
+# demo can exercise the sealed evaluation path end to end; they are not, and are not derived
+# from, any human result. Never cite them. The real hold-out benchmark
+# (../holdout_hauser4.yaml) must never be used by the demo: `make demo` freezes and runs a
+# confirmatory analysis, which would unseal it.
+id: synthetic_holdout_vignette
+citation: "SYNTHETIC - demo only"
+source_data: "none (synthetic)"
+synthetic: true
+verified: false
+type: binary
+outcome: judged_permissible
+contrast: [side_effect, greater_good]
+conditions:
+  greater_good: {k: 250, n: 500}
+  side_effect: {k: 250, n: 500}
+recognition_keywords: ["hauser", "cushman"]
+target_population: >-
+  Adult volunteers, mostly university students, at many data-collection sites in several
+  countries (synthetic description for the offline demo).
+sites: []
+subgroups: []

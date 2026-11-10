@@ -1,0 +1,28 @@
+# SENSITIVITY variant of manylabs2_hauser4.yaml: applies the preregistered ML2 rule "exclude
+# participants who take fewer than four seconds to read and respond" (manylabRs varfun.Hauser.1
+# documentation; key-table intent "Timing > 4"), which the published Hauser.4 analysis did not
+# apply. Same mapping otherwise. Output stays sealed like the primary benchmark.
+#   sim import-benchmark --task holdout \
+#     --raw data/raw/ml2_hauser4/Hauser4_ManyLabs2_CLEAN_CASE.csv \
+#     --spec data/benchmarks/import_specs/manylabs2_hauser4_4s.yaml \
+#     --out data/benchmarks/holdout_hauser4_4s.yaml
+source: >-
+  Many Labs 2 (Klein et al., 2018), Hauser.4 global CLEAN_CASE file, with the preregistered
+  4-second exclusion applied
+base: data/benchmarks/templates/holdout_hauser4.yaml
+accepted_raw_sha256:
+  a5a83b98cba009ee462afa1ed5c3d34395da143a3a1f8d78bf4d7ce45e012f90: ml2_hauser4_clean
+condition_column: factor
+condition_values: {GreaterGood: greater_good, SideEffect: side_effect}
+outcome_column: variable
+success_values: ["Yes"]
+failure_values: ["No"]
+site_column: source
+min_site_n: 15
+include: {case.include: "TRUE"}
+# Page-submit time of the scenario page the participant saw (the other item is blank).
+derive:
+  page_time_s: {coalesce: [haus3.1t_3, haus4.1t_3]}
+filters:
+  - {column: page_time_s, op: ">", value: 4}   # key table: "Timing > 4"
+signoff: null

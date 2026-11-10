@@ -1,0 +1,467 @@
+# Declared provenance of every external research source.
+#
+# This file is written by hand from the sources themselves (codebooks, papers, analysis code).
+# `sim sources audit` combines it with what is observed in the files under data/raw/ (hash,
+# size, rows, columns, missingness, cross-checks) and writes data/sources/provenance.json.
+# `sim sources verify` recomputes everything and fails on any difference.
+#
+# Rules: a mapping is recorded here only if a source states it or a check below verifies it.
+# Anything else is listed under `unknowns`. Disagreements between sources go under
+# `discrepancies` and are never resolved by editing a human benchmark.
+#
+# Sealing: sources with `sealed: true` hold outcomes of an evaluation (hold-out) study. Their
+# outcome columns are profiled for missingness only, and checks on them report pass/fail
+# without values.
+
+schema: silicon-subjects/sources/v1
+
+sources:
+  # ------------------------------------------------------------------ Many Labs 1: framing
+  - id: ml1_cleaned
+    title: Many Labs 1 cleaned dataset with variable values (tab-delimited)
+    role: primary participant-level data for the framing benchmark
+    task: framing
+    citation: >-
+      Klein, R. A., Ratliff, K. A., Vianello, M., Adams, R. B., Jr., Bahník, Š., Bernstein, M. J.,
+      ... Nosek, B. A. (2014). Investigating variation in replicability: A "many labs" replication
+      project. Social Psychology, 45(3), 142-152. https://doi.org/10.1027/1864-9335/a000178
+    url: https://raw.githubusercontent.com/ManyLabsOpenScience/ManyLabs1/7a1334c053201ccdd2054417f74aa3d62776dd03/Data/Tab.delimited.Cleaned.dataset.WITH.variable.values.dat
+    release: >-
+      GitHub ManyLabsOpenScience/ManyLabs1 at commit 7a1334c (2018-11-19), file
+      Data/Tab.delimited.Cleaned.dataset.WITH.variable.values.dat; mirrors OSF project wx7ck.
+      Byte-identical copy in FredHasselman/manylabRs (commit 829078f).
+    license: CC0 1.0 (Data/Data released under CC0 license.txt)
+    redistributable: true
+    path: data/raw/ml1/ManyLabs1_Cleaned_VariableValues.tsv
+    sha256: d07e664c137c514981ccd9abae96d24469867a37e9a93fe695a734e475fc3f05
+    bytes: 36072878
+    format: tsv
+    encoding: utf-8
+    encoding_errors: replace
+    variables_needed:
+      session_id: unique participant session id (row identifier)
+      referrer: data-collection site (36 sites); full names in OSF Table S1
+      sample: numeric site code, one-to-one with referrer
+      gainlossgroup: "assigned frame: 1 = gain wording (item diseaseframinga), 0 = loss wording (item diseaseframingb)"
+      gainlossDV: "choice: 1 = program with exact (sure) outcome, 2 = probabilistic (risky) program; blank = no response"
+      diseaseframinga: raw gain-frame item (1 = "200 people will be saved", 2 = risky)
+      diseaseframingb: raw loss-frame item (1 = "400 people will die", 2 = risky)
+      us_or_international: "0 = US sample, 1 = international sample"
+      lab_or_online: "0 = in-lab, 1 = online"
+      mturk.exclude: '"Recommended to exclude by Jesse" (codebook); rationale undocumented'
+      mturk.exclude.null: '"Excludes responses that completed zero mini-experiments" (codebook)'
+    treatment_arms:
+      gain: gainlossgroup == 1 (participant answered diseaseframinga)
+      loss: gainlossgroup == 0 (participant answered diseaseframingb)
+    outcome_coding:
+      chose_certain: gainlossDV == 1 (success); gainlossDV == 2 is the risky program (failure)
+    wording: >-
+      Codebook stem (both frames): "Imagine that the United States is preparing for the outbreak
+      of an unusual disease, which is expected to kill 600 people. Two alternative programs to
+      fight the disease have been proposed. Choose program:". Options are given only as value-label
+      summaries (gain: "200 people will be saved" / "1/3 probability to save all, 2/3 nobody will
+      be saved"; loss: "400 people will die" / "1/3 probability nobody will die, 2/3 that 600 will
+      die"). Non-English sites used translations not included in this file.
+    reproducibility: >-
+      Reproduced. Frame and choice codes agree row-for-row with the raw items; frame sizes match
+      the Berkeley extract exactly; all 36 sites x 5 cells match the ML1 analysts' own Gain_Loss
+      sheet (MLforR.xlsx).
+    discrepancies:
+      - >-
+        Mixed text encoding: 297 of 6,346 physical lines contain bytes that are not valid UTF-8
+        (all in free-text columns). The file is read as UTF-8 with replacement characters; the
+        audit checks that no column used here contains a replacement character.
+      - >-
+        Codebook value labels for gainlossgroup and gainlossDV are truncated inside the xlsx
+        itself ("{,00, People will die}...", "{1,00, chose program with exact outcome}..."). The
+        mapping is established from the raw items diseaseframinga/b and the check
+        ml1_codebook_items, and is consistent with these truncated labels.
+      - >-
+        mturk.exclude (3 rows, values 2 and 99) and mturk.exclude.null (20 rows, value 1) flag 23
+        rows. All 23 answered the framing item, which contradicts the description "completed
+        zero mini-experiments" for mturk.exclude.null. Neither the ML1 analysts' Gain_Loss sheet
+        nor the Berkeley extract excludes them, so the published analysis set keeps them. The
+        import keeps them and reports the flags (decision recorded in the import spec).
+      - >-
+        The stimulus wording in the ML1 codebook ("to fight the disease ... Choose program:")
+        differs from Tversky & Kahneman (1981) ("to combat the disease ... Assume that the exact
+        scientific estimates ... Which of the two programs would you favor?").
+    unknowns:
+      - Exact full option texts shown to ML1 participants (only abbreviated value labels here).
+      - Translations used at non-English sites and which sites used them.
+    sealed: false
+
+  - id: ml1_codebook
+    title: Many Labs 1 codebook
+    role: variable definitions and value labels for ml1_cleaned
+    task: framing
+    citation: Klein et al. (2014), Many Labs 1 codebook (see ml1_cleaned).
+    url: https://raw.githubusercontent.com/ManyLabsOpenScience/ManyLabs1/7a1334c053201ccdd2054417f74aa3d62776dd03/Data/Codebook.xlsx
+    release: GitHub ManyLabsOpenScience/ManyLabs1 at commit 7a1334c, file Data/Codebook.xlsx
+    license: CC0 1.0
+    redistributable: true
+    path: data/raw/ml1/ManyLabs1_Codebook.xlsx
+    sha256: abe68b5d3b84b380cdfc3ad68e106f723c8cb15ee7441913299e0a6cd4dba21c
+    bytes: 23015
+    format: xlsx
+    reproducibility: The locally supplied codebook and the archived copy have the same SHA-256.
+    discrepancies:
+      - Value-label cells for several recoded variables are truncated in the file itself.
+    unknowns: []
+    sealed: false
+
+  - id: ml1_workbook
+    title: Many Labs 1 analysts' per-site summary workbook (MLforR.xlsx, sheet Gain_Loss)
+    role: independent cross-check of per-site framing counts
+    task: framing
+    citation: >-
+      Hasselman, F., et al. Many Labs 1 R analysis scripts (ManyLabsOpenScience/ManyLabs1,
+      MLforR.xlsx), accompanying Klein et al. (2014).
+    url: https://raw.githubusercontent.com/ManyLabsOpenScience/ManyLabs1/7a1334c053201ccdd2054417f74aa3d62776dd03/MLforR.xlsx
+    release: GitHub ManyLabsOpenScience/ManyLabs1 at commit 7a1334c, file MLforR.xlsx
+    license: not stated for this file (repository code is shared publicly; not redistributed here)
+    redistributable: false
+    path: data/raw/ml1/MLforR.xlsx
+    sha256: d579cf90543034675bd84d0e7f7ac4ed39bf43e810db7e701482394a819ef680
+    bytes: null
+    format: xlsx
+    reproducibility: >-
+      Every per-site and overall count reproduces from ml1_cleaned (check ml1_workbook_sites).
+    discrepancies:
+      - >-
+        The Gain_Loss column headers are mislabeled: the column headed "Count (Gain - Exact
+        outcome)" holds the loss-frame sure count (overall 1,038), "Count (Loss - Exact outcome)"
+        holds the gain-frame sure count (1,974), and the header "Count (Loss - Exact outcome)"
+        appears twice. The numbers agree with the codebook-anchored mapping; the headers do not.
+        The check compares numbers by position, with this mapping stated explicitly.
+    unknowns: []
+    sealed: false
+
+  - id: ml1_berkeley
+    title: UC Berkeley STAT 158 framing extract (framing.csv)
+    role: secondary cross-check of frame sizes and choices
+    task: framing
+    citation: UC Berkeley STAT 158 (Spring 2026) course data, framing.csv, derived from Many Labs 1.
+    url: https://stat158.berkeley.edu/spring-2026/data/framing/framing.csv
+    release: course website; not versioned (pinned by SHA-256 only)
+    license: unknown (not redistributed here)
+    redistributable: false
+    path: data/raw/ml1/berkeley_stat158_framing.csv
+    sha256: 43711ab32291fd3c97b8af8f2f4e14e5686f766cc9ce1024501eaab426f15650
+    bytes: 43916
+    format: csv
+    variables_needed:
+      treatment: "frame: gain or loss"
+      response: "1 = chose the RISKY program, 0 = chose the sure program (opposite polarity to chose_certain)"
+    treatment_arms: {gain: treatment == gain, loss: treatment == loss}
+    outcome_coding:
+      chose_certain: response == 0 (inferred by matching counts to ml1_cleaned; the file has no codebook)
+    reproducibility: >-
+      6,271 rows = ML1 responders; per-frame n and choice counts equal ml1_cleaned (check
+      ml1_berkeley_counts). Contains no site, exclusion or participant identifiers.
+    discrepancies:
+      - >-
+        response = 1 means risky, the reverse of the benchmark's chose_certain coding. Polarity
+        is inferred, not documented; the check verifies it numerically.
+    unknowns:
+      - How the extract was produced (no script or documentation).
+    sealed: false
+
+  # ------------------------------------------------------- Many Labs 2 Hauser.4: hold-out
+  - id: ml2_hauser4_clean
+    title: Many Labs 2, Trolley Dilemma 2 (Hauser et al., 2007), analysis Hauser.4, global CLEAN_CASE data
+    role: participant-level data for the hold-out (evaluation) benchmark
+    task: holdout
+    citation: >-
+      Klein, R. A., Vianello, M., Hasselman, F., Adams, B. G., Adams, R. B., Jr., Alper, S., ...
+      Nosek, B. A. (2018). Many Labs 2: Investigating variation in replicability across samples
+      and settings. Advances in Methods and Practices in Psychological Science, 1(4), 443-490.
+      https://doi.org/10.1177/2515245918810225
+    url: https://raw.githubusercontent.com/ManyLabsOpenScience/ManyLabs2/acef63fc397b8dce7f0b00f863bcea78d324bea8/OSFdata/Trolley%20Dilemma%202%20(Hauser%20et%20al.%2C%202007)/Hauser.4/Global/Data/Hauser_4_study_global_include_all_CLEAN_CASE.csv
+    release: >-
+      GitHub ManyLabsOpenScience/ManyLabs2 at commit acef63f, OSFdata/Trolley Dilemma 2 (Hauser
+      et al., 2007)/Hauser.4/Global/Data/ (mirrors OSF project 8cd4r).
+    license: repository GPL-3.0 (code); data published openly on OSF; not redistributed here
+    redistributable: false
+    path: data/raw/ml2_hauser4/Hauser4_ManyLabs2_CLEAN_CASE.csv
+    sha256: a5a83b98cba009ee462afa1ed5c3d34395da143a3a1f8d78bf4d7ce45e012f90
+    bytes: null
+    format: csv
+    variables_needed:
+      uID: unique participant id
+      factor: "condition: GreaterGood (item haus3.1) or SideEffect (item haus4.1)"
+      variable: "response: Yes / No (= raw code 1 / 2 of the condition's item)"
+      haus3.1: "GreaterGood item, 1 = Yes (permissible), 2 = No"
+      haus4.1: "SideEffect item, 1 = Yes (permissible), 2 = No"
+      haus3.1t_3: GreaterGood page-submit time (s)
+      haus4.1t_3: SideEffect page-submit time (s)
+      source: data-collection site (61 sites)
+      Language: survey language (12 languages)
+      Weird: WEIRD-sample indicator
+      case.include: ML2 inclusion flag (TRUE for every row in this file)
+    outcome_columns: [variable, haus3.1, haus4.1]
+    treatment_arms:
+      greater_good: factor == GreaterGood (Hauser 2007 scenario 3, "Ned"; harm as an intended means)
+      side_effect: factor == SideEffect (Hauser 2007 scenario 4, "Oscar"; harm as a foreseen side effect)
+    outcome_coding:
+      judged_permissible: variable == Yes (success); No is failure
+    exclusions: >-
+      ML2 key table (unique.id 47) intends "Timing > 4" seconds but the entry is malformed
+      (c('Timing > 4') instead of c('Timing', 'X > 4')); the published results report 0 excluded
+      cases, and 100 rows have a page time under 4 s. No prior-exposure filter in Hauser.4
+      (that is Hauser.5/6).
+    reproducibility: >-
+      Reproduced (sealed check ml2_hauser4_results): N = 7,923, per-condition n, and Yes/No
+      counts equal the published RESULTS file; the condition mapping and Yes/No coding agree
+      with the raw items for every row.
+    discrepancies:
+      - >-
+        The preregistered analysis plan (manylabRs varfun.Hauser.1 documentation) excludes
+        participants who took fewer than 4 seconds; the published Hauser.4 analysis did not
+        apply it (malformed key-table filter). The benchmark follows the published analysis
+        (N = 7,923); the 4-second rule is available as a sealed sensitivity import.
+      - >-
+        The key table requests a one-sided test (alternative = 'greater'); the published RESULTS
+        file reports a two-sided Fisher exact test.
+      - >-
+        In the RESULTS file, stat.cond3.n and stat.cond4.n (GreaterGood rows) show 3,955 (the
+        SideEffect n); stat.n2 = 3,968 is correct and the GreaterGood proportions use 3,968.
+      - >-
+        manylabRs varfun.Hauser.2 (not used by Hauser.4) pairs SideEffect with haus3.1 in its
+        code while its documentation pairs haus3.1 with GreaterGood. Hauser.4 uses
+        varfun.Hauser.1 with the key-table mapping SideEffect = haus4.1, GreaterGood = haus3.1,
+        which the data confirm.
+    unknowns:
+      - Exact English wording presented by ML2 (ML2 materials not in hand); the 2007 Appendix text is used.
+      - Translations used at the 11 non-English language sites.
+    sealed: true
+
+  - id: ml2_hauser4_results
+    title: Many Labs 2 Hauser.4 published global results
+    role: published aggregate results (sealed reproduction target)
+    task: holdout
+    citation: Klein et al. (2018), Many Labs 2 (see ml2_hauser4_clean).
+    url: https://raw.githubusercontent.com/ManyLabsOpenScience/ManyLabs2/acef63fc397b8dce7f0b00f863bcea78d324bea8/OSFdata/Trolley%20Dilemma%202%20(Hauser%20et%20al.%2C%202007)/Hauser.4/Global/Results/Hauser_4_study_global_include_all_RESULTS.csv
+    release: GitHub ManyLabsOpenScience/ManyLabs2 at commit acef63f (results generated 2018-11-14)
+    license: see ml2_hauser4_clean; not redistributed here
+    redistributable: false
+    path: data/raw/ml2_hauser4/Hauser4_ManyLabs2_RESULTS.csv
+    sha256: d37100ff28ace7a1acc6434f7c6211efb5c94483b5845c2f6ffcf1a2b72b9f14
+    bytes: null
+    format: csv
+    tabular_profile: false
+    reproducibility: Reproduced from ml2_hauser4_clean (sealed check).
+    discrepancies: []
+    unknowns: []
+    sealed: true
+    # The project brief quotes the published whole-percent permissibility rates. They are kept
+    # here only as a hash commitment (sha256 of "silicon-subjects/claim/v1|side_effect=<pct>|
+    # greater_good=<pct>"), so they cannot be read casually. This guards against accidental
+    # exposure only: a two-number claim is trivially recoverable by brute force.
+    published_claims:
+      - description: whole-percent permissible rates per condition quoted in the project brief for Klein et al. (2018)
+        sha256: 57db725736b9e462e21704b728aa17bef132cbdc412d2ff9d12bd26c75b2e21c
+
+  - id: ml2_hauser4_script
+    title: Many Labs 2 Hauser.4 auto-generated R analysis script
+    role: analysis definition (varfun, test, minimum n)
+    task: holdout
+    citation: Klein et al. (2018), Many Labs 2 analysis code (see ml2_hauser4_clean).
+    url: https://raw.githubusercontent.com/ManyLabsOpenScience/ManyLabs2/acef63fc397b8dce7f0b00f863bcea78d324bea8/OSFdata/Trolley%20Dilemma%202%20(Hauser%20et%20al.%2C%202007)/Hauser.4/Global/Hauser_4_study_global_include_all.R
+    release: GitHub ManyLabsOpenScience/ManyLabs2 at commit acef63f
+    license: GPL-3.0; not redistributed here (read, never executed)
+    redistributable: false
+    path: data/raw/ml2_hauser4/Hauser4_ManyLabs2_Analysis.R
+    sha256: ec94f1cae97f1a5ea7f933e906956140fcfc9294f5de5dd65b251f9048ed87f1
+    bytes: null
+    format: text
+    reproducibility: >-
+      States analysis.unique.id 47, varfun.Hauser.1, Nmin.raw 30, Nmin.cond 15; the inclusion
+      rule itself lives in the key table (ml2_keytable).
+    discrepancies: []
+    unknowns: []
+    sealed: false
+
+  - id: ml2_keytable
+    title: Many Labs 2 master key table
+    role: per-analysis variables, inclusion rules and tests
+    task: holdout
+    citation: Klein et al. (2018), Many Labs 2 (OSFdata/!!KeyTables/ML2_KeyTable.csv).
+    url: https://raw.githubusercontent.com/ManyLabsOpenScience/ManyLabs2/acef63fc397b8dce7f0b00f863bcea78d324bea8/OSFdata/%21%21KeyTables/ML2_KeyTable.csv
+    release: GitHub ManyLabsOpenScience/ManyLabs2 at commit acef63f
+    license: see ml2_hauser4_clean; not redistributed here
+    redistributable: false
+    path: data/raw/ml2_hauser4/ML2_KeyTable.csv
+    sha256: afee146691be47f4e52c2914fcfd81085c1e34ee7bc2db9f5050ce0a4d0a7bd3
+    bytes: null
+    format: csv
+    reproducibility: >-
+      Row unique.id 47 (Hauser.4): SideEffect = haus4.1, GreaterGood = haus3.1; cases include
+      list(each=rbind(c('Condition','X >= 0'),c('Timing > 4'))); fisher.exact; primary and global.
+    discrepancies:
+      - The Hauser.4 timing filter is malformed (see ml2_hauser4_clean).
+    unknowns: []
+    sealed: false
+
+  - id: hauser2007_paper
+    title: Hauser, Cushman, Young, Jin & Mikhail (2007), Mind & Language
+    role: original stimuli (Appendix, scenarios 3 and 4) and original design
+    task: holdout
+    citation: >-
+      Hauser, M., Cushman, F., Young, L., Kang-Xing Jin, R., & Mikhail, J. (2007). A dissociation
+      between moral judgments and justifications. Mind & Language, 22, 1-21. (Volume and pages
+      as cited in the ML2 analysis code; DOI not recorded because no source in hand states it.)
+    url: https://moralitylab.bc.edu/wp-content/uploads/sites/192/2011/10/mind_lang_2007.pdf
+    release: author-hosted PDF (Boston College Morality Lab)
+    license: publisher copyright; not redistributed here (stimulus text quoted for research use)
+    redistributable: false
+    path: data/raw/hauser2007/mind_lang_2007.pdf
+    sha256: 9e9dc57dd550c671da6dfc06affabe39aa011faad46ab9b00415c9660b6ae99f
+    bytes: 517278
+    format: pdf
+    reproducibility: >-
+      Appendix pages 18-19 give the full texts of scenario 3 (Ned) and scenario 4 (Oscar) with
+      the question "Is it morally permissible for <name> to throw the switch?". The 2007
+      study excluded control-scenario failures and responses under 4 seconds.
+    discrepancies:
+      - >-
+        ML2 condition names (GreaterGood / SideEffect) are matched to scenarios 3 / 4 by the
+        consistent ML2 item numbering (Trolley 1: haus1 = scenario 1 Denise = SideEffect,
+        haus2 = scenario 2 Frank = GreaterGood; Trolley 2: haus3 = Ned, haus4 = Oscar) and by
+        the means / side-effect structure; ML2's own materials were not available to confirm.
+    unknowns: []
+    sealed: false
+
+  # ------------------------------------------------------------- not yet obtained
+  - id: gss2022_stata
+    title: General Social Survey 2022, single-year Stata archive (NORC)
+    role: archive holding the GSS 2022 microdata and its documentation
+    task: null
+    citation: >-
+      General Social Survey 2022 [machine-readable data file], NORC at the University of Chicago.
+      The release notes inside the archive identify it as part of the GSS 1972-2022 Release 3
+      (April 2024) series. Principal investigators are to be cited from the codebook.
+    url: https://gss.norc.org/content/dam/gss/get-the-data/documents/stata/2022_stata.zip
+    release: >-
+      NORC single-year 2022 Stata archive (7 files: GSS2022.dta, the GSS 2022 codebook, release
+      notes 7222 and 7224 R3a, What's New, Release Variables, Mode Sensitivity Note)
+    license: GSS terms of use; microdata not redistributed here (only 50 sampled profiles are committed)
+    redistributable: false
+    path: data/raw/gss2022/2022_stata.zip
+    sha256: ba0bc3255ce59d5351b8e5382c81d9d29ad6275d61cf24f6f027b69ef2e97fd0
+    bytes: 6138410
+    format: zip
+    reproducibility: Archive members checked for unsafe paths; members are extracted by name only.
+    discrepancies: []
+    unknowns: []
+    sealed: false
+
+  - id: gss2022_dta
+    title: GSS 2022 respondent file (Stata 118 format)
+    role: survey respondents for the survey_persona arms (personas carry reported answers only)
+    task: null
+    citation: See gss2022_stata.
+    url: https://gss.norc.org/content/dam/gss/get-the-data/documents/stata/2022_stata.zip#2022/GSS2022.dta
+    archive: {source: gss2022_stata, member: 2022/GSS2022.dta}
+    release: member 2022/GSS2022.dta of gss2022_stata
+    license: see gss2022_stata; not redistributed
+    redistributable: false
+    path: data/survey/raw/GSS2022.dta
+    sha256: 334ac5a7d7623e779800dedf5b1b39e3b6883c5d2bac6a26302b3b3f26773148
+    bytes: 7707984
+    format: dta
+    variables_needed:
+      year: survey year (2022 for every row)
+      id: respondent id
+      wtssps: "person post-stratification weight; missing (.y, 'not available in this year') for the 605 AmeriSpeak oversample cases"
+      wtssps_as: post-stratification weight covering all 4,149 cases incl. the AmeriSpeak oversample (not used by the current config)
+      sample: "sampling frame: 2010 sample frame, full probability (3,544) or 2022 AmeriSpeak frame oversample (605)"
+    reproducibility: >-
+      4,149 respondents, 1,297 variables, all with year 2022. Value labels and missing codes are
+      read from the file (`sim survey-personas` records counts per missing code with the file's
+      own labels: e.g. .i iap = not asked, .d don't know, .r refused, .n no answer, .s skipped on
+      web, .y not available in this year).
+    discrepancies:
+      - >-
+        The configured weight (wtssps) exists only for the 3,544 baseline cross-section cases.
+        NORC's release notes say the 605 AmeriSpeak oversample cases (Black, Hispanic and Asian
+        respondents, same national frame) can be analyzed together with the rest only with
+        WTSSPS_AS / WTSSNRPS_AS. Personas are therefore drawn from the baseline sample. Use of
+        wtssps_as would require a preregistered change.
+    unknowns:
+      - Whether NORC recommends the nonresponse-adjusted weight (wtssnrps) over wtssps for this purpose.
+    sealed: false
+
+  - id: gss2022_codebook
+    title: GSS 2022 codebook (NORC)
+    role: variable definitions, value labels and missing-code conventions
+    task: null
+    citation: See gss2022_stata.
+    url: https://gss.norc.org/content/dam/gss/get-the-data/documents/stata/2022_stata.zip#2022/GSS%202022%20Codebook.pdf
+    archive: {source: gss2022_stata, member: "2022/GSS 2022 Codebook.pdf"}
+    release: member of gss2022_stata
+    license: NORC documentation; not redistributed
+    redistributable: false
+    path: data/raw/gss2022/GSS_2022_Codebook.pdf
+    sha256: 92eb05ae5fd6ad5f6893fc53a205205d0f8ae7326ddea77652044e8522652eec
+    bytes: 3288653
+    format: pdf
+    reproducibility: Extracted from the verified archive by member name.
+    discrepancies: []
+    unknowns: []
+    sealed: false
+
+  - id: burger2009_paper
+    title: Burger (2009), Replicating Milgram, American Psychologist
+    role: aggregate benchmark for the obedience task (base and modeled-refusal conditions)
+    task: obedience
+    citation: >-
+      Burger, J. M. (2009). Replicating Milgram: Would people still obey today? American
+      Psychologist, 64. (Issue, pages and DOI to be confirmed from the paper once obtained.)
+    url: https://www.psy.miami.edu/_assets/pdf/rpo-articles/burger-2009.pdf
+    release: University of Miami-hosted copy
+    license: publisher copyright; not redistributed here
+    redistributable: false
+    path: data/raw/burger2009/burger-2009.pdf
+    sha256: null
+    bytes: null
+    format: pdf
+    reproducibility: >-
+      The source was unavailable for verification (HTTP 403).
+      The obedience benchmark (28/40, 19/30) stays unverified until the paper is read.
+    discrepancies: []
+    unknowns: [everything until the paper is available]
+    sealed: false
+
+# Committed derived files. Each is reproducible from a verified source by `sim sources extract`.
+extracts:
+  - id: ml1_framing_extract
+    from: ml1_cleaned
+    path: data/sources/extracts/ml1_framing.csv
+    columns: [session_id, referrer, sample, us_or_international, lab_or_online, gainlossgroup, gainlossDV, diseaseframinga, diseaseframingb, mturk.exclude, mturk.exclude.null]
+    note: >-
+      CC0 subset of ml1_cleaned with only the framing-related columns, so tests and imports run
+      without the 36 MB raw file. Values are whitespace-trimmed; nothing else is changed.
+
+# Committed benchmark files that `sim sources verify` re-imports from their source and compares
+# byte for byte (the importer output has no timestamp, so this is exact).
+benchmarks:
+  - task: framing
+    source: ml1_cleaned
+    spec: data/benchmarks/import_specs/manylabs1_framing.yaml
+    out: data/benchmarks/framing_manylabs1.yaml
+  # Sealed (evaluation) benchmarks: the files are gitignored and rebuilt locally with
+  # `sim sources fetch` + `sim sources extract`; only their SHA-256 is committed, so nothing
+  # that reads the repository can see the hold-out outcomes.
+  - task: holdout
+    source: ml2_hauser4_clean
+    spec: data/benchmarks/import_specs/manylabs2_hauser4.yaml
+    out: data/benchmarks/holdout_hauser4.yaml
+    sealed: true
+    sha256: 9736c082003907810176c54fccff28ac0f41d5c1cbbf97df01a2324ab8d66942
+  - task: holdout
+    source: ml2_hauser4_clean
+    spec: data/benchmarks/import_specs/manylabs2_hauser4_4s.yaml
+    out: data/benchmarks/holdout_hauser4_4s.yaml
+    sealed: true
+    sha256: ca6af5419af3db2903d891da89d786e13983a3b5b242525ddcce3acfd0b0aea1

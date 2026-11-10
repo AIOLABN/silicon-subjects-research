@@ -1,0 +1,310 @@
+{
+  "source": "General Social Survey (NORC)",
+  "year": 2022,
+  "raw_file_sha256": "334ac5a7d7623e779800dedf5b1b39e3b6883c5d2bac6a26302b3b3f26773148",
+  "n_in_year": 4149,
+  "n_eligible": 3544,
+  "n_excluded_no_weight": 605,
+  "excluded_no_weight_codes": {
+    ".y (not available in this year)": 605
+  },
+  "n_sampled": 50,
+  "weight_column": "wtssps",
+  "method": "PPS by survey weight, without replacement (self-weighting)",
+  "seed": 20261012,
+  "missing_rate": {
+    "age": 0.05869074492099323,
+    "sex": 0.0056433408577878106,
+    "race_ethnicity": 0.009311512415349887,
+    "highest_degree": 0.0,
+    "region_of_the_US": 0.0,
+    "marital_status": 0.004232505643340858,
+    "work_status": 0.002257336343115124,
+    "political_party": 0.009875846501128669,
+    "political_views": 0.03329571106094808,
+    "religion": 0.017212189616252822,
+    "religious_service_attendance": 0.009875846501128669,
+    "total_family_income": 0.12246049661399548,
+    "born_in_the_US": 0.006207674943566591,
+    "type_of_place_lived_in": 0.0,
+    "number_of_children": 0.0031038374717832955,
+    "people_in_household": 0.49774266365688485,
+    "time_in_military_service": 0.0056433408577878106,
+    "social_class_self_identified": 0.009875846501128669,
+    "self_rated_health": 0.0008465011286681715,
+    "trust_in_other_people": 0.6619638826185101
+  },
+  "missing_policy": "Any Stata missing code (not asked/iap, don't know, refused, no answer, skipped on web, not available) leaves the attribute out of the persona; nothing is imputed. Counts by code among eligible respondents are in missing_codes.",
+  "missing_codes": {
+    "wtssps": {},
+    "age": {
+      ".n (no answer)": 208
+    },
+    "sex": {
+      ".d (don't know)": 8,
+      ".n (no answer)": 9,
+      ".s (skipped on web)": 3
+    },
+    "race": {
+      ".i (iap)": 53
+    },
+    "hispanic": {
+      ".d (don't know)": 17,
+      ".n (no answer)": 5,
+      ".s (skipped on web)": 15
+    },
+    "degree": {},
+    "region": {},
+    "marital": {
+      ".d (don't know)": 1,
+      ".n (no answer)": 9,
+      ".s (skipped on web)": 5
+    },
+    "wrkstat": {
+      ".d (don't know)": 1,
+      ".n (no answer)": 3,
+      ".s (skipped on web)": 4
+    },
+    "partyid": {
+      ".n (no answer)": 35
+    },
+    "polviews": {
+      ".d (don't know)": 73,
+      ".i (iap)": 1,
+      ".n (no answer)": 27,
+      ".s (skipped on web)": 17
+    },
+    "relig": {
+      ".d (don't know)": 20,
+      ".n (no answer)": 32,
+      ".s (skipped on web)": 9
+    },
+    "attend": {
+      ".i (iap)": 2,
+      ".n (no answer)": 24,
+      ".s (skipped on web)": 9
+    },
+    "income16": {
+      ".d (don't know)": 268,
+      ".r (refused)": 132,
+      ".s (skipped on web)": 34
+    },
+    "born": {
+      ".d (don't know)": 7,
+      ".i (iap)": 5,
+      ".n (no answer)": 2,
+      ".s (skipped on web)": 8
+    },
+    "xnorcsiz": {},
+    "childs": {
+      ".i (iap)": 11
+    },
+    "hompop": {
+      ".i (iap)": 1764
+    },
+    "vetyears": {
+      ".n (no answer)": 10,
+      ".s (skipped on web)": 10
+    },
+    "class": {
+      ".d (don't know)": 21,
+      ".n (no answer)": 7,
+      ".s (skipped on web)": 7
+    },
+    "health": {
+      ".d (don't know)": 1,
+      ".s (skipped on web)": 2
+    },
+    "trust": {
+      ".d (don't know)": 2,
+      ".i (iap)": 2344
+    }
+  },
+  "not_claimed": "These respondents did not take part in any of the target experiments; personas carry only their reported survey answers.",
+  "labels_seen": {
+    "age": [
+      "18-29 years old",
+      "30-44 years old",
+      "45-64 years old",
+      "65 or older"
+    ],
+    "sex": [
+      "female",
+      "male"
+    ],
+    "race_ethnicity": [
+      "Black",
+      "Black (not Hispanic)",
+      "Hispanic or Latino",
+      "White",
+      "White (not Hispanic)",
+      "another race",
+      "another race (not Hispanic)"
+    ],
+    "highest_degree": [
+      "associate/junior college",
+      "bachelor's",
+      "graduate",
+      "high school",
+      "less than high school"
+    ],
+    "region_of_the_US": [
+      "midwest",
+      "northeast",
+      "south",
+      "west"
+    ],
+    "marital_status": [
+      "divorced",
+      "married",
+      "never married",
+      "separated",
+      "widowed"
+    ],
+    "work_status": [
+      "in school",
+      "keeping house",
+      "other",
+      "retired",
+      "unemployed, laid off, looking for work",
+      "with a job, but not at work because of temporary illness, vacation, strike",
+      "working full time",
+      "working part time"
+    ],
+    "political_party": [
+      "independent (leaning to neither party)",
+      "independent, close to democrat",
+      "independent, close to republican",
+      "not very strong democrat",
+      "not very strong republican",
+      "other party",
+      "strong democrat",
+      "strong republican"
+    ],
+    "political_views": [
+      "conservative",
+      "extremely conservative",
+      "extremely liberal",
+      "liberal",
+      "moderate, middle of the road",
+      "slightly conservative",
+      "slightly liberal"
+    ],
+    "religion": [
+      "buddhism",
+      "catholic",
+      "christian",
+      "hinduism",
+      "inter-nondenominational",
+      "jewish",
+      "muslim/islam",
+      "native american",
+      "none",
+      "orthodox-christian",
+      "other",
+      "other eastern religions",
+      "protestant"
+    ],
+    "religious_service_attendance": [
+      "2-3 times a month",
+      "about once a month",
+      "about once or twice a year",
+      "every week",
+      "less than once a year",
+      "nearly every week",
+      "never",
+      "several times a week",
+      "several times a year"
+    ],
+    "total_family_income": [
+      "$1,000 to $2,999",
+      "$10,000 to $12,499",
+      "$110,000 to $129,999",
+      "$12,500 to $14,999",
+      "$130,000 to $149,999",
+      "$15,000 to $17,499",
+      "$150,000 to $169,999",
+      "$17,500 to $19,999",
+      "$170,000 or over",
+      "$20,000 to $22,499",
+      "$22,500 to $24,999",
+      "$25,000 to $29,999",
+      "$3,000 to $3,999",
+      "$30,000 to $34,999",
+      "$35,000 to $39,999",
+      "$4,000 to $4,999",
+      "$40,000 to $49,999",
+      "$5,000 to $5,999",
+      "$50,000 to $59,999",
+      "$6,000 to $6,999",
+      "$60,000 to $74,999",
+      "$7,000 to $7,999",
+      "$75,000 to $89,999",
+      "$8,000 to $9,999",
+      "$90,000 to $109,999",
+      "under $1,000"
+    ],
+    "born_in_the_US": [
+      "no, born outside the US",
+      "yes"
+    ],
+    "type_of_place_lived_in": [
+      "a large central city (over 250,000)",
+      "a medium size central city (50,000 to 250,000)",
+      "a suburb of a large central city",
+      "a suburb of a medium size central city",
+      "a town or village (2,500 to 9,999)",
+      "an incorporated area less than 2,500 or an unincorporated area of 1,000 to 2,499",
+      "an unincorporated area of a large central city (division, township, etc.)",
+      "an unincorporated area of a medium central city",
+      "not within an smsa, (within a county) and a small city (10,000 to 49,999)",
+      "open country within larger civil divisions (division, township, etc.)"
+    ],
+    "number_of_children": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8 or more"
+    ],
+    "people_in_household": [
+      "1",
+      "12",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9"
+    ],
+    "time_in_military_service": [
+      "no active duty",
+      "yes, 2-4 years",
+      "yes, less than 2 years",
+      "yes, more than 4 years"
+    ],
+    "social_class_self_identified": [
+      "lower class",
+      "middle class",
+      "upper class",
+      "working class"
+    ],
+    "self_rated_health": [
+      "excellent",
+      "fair",
+      "good",
+      "poor"
+    ],
+    "trust_in_other_people": [
+      "can't be too careful",
+      "depends",
+      "most people can be trusted"
+    ]
+  }
+}

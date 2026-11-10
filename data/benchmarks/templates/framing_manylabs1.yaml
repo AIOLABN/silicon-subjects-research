@@ -1,0 +1,31 @@
+# Hand-written part of the framing benchmark. `sim import-benchmark` merges this with counts
+# computed from the Many Labs 1 data (import spec: ../import_specs/manylabs1_framing.yaml) and
+# writes ../framing_manylabs1.yaml. Edit this file or the spec, never the generated one.
+id: manylabs1_gain_loss_framing
+citation: >-
+  Klein, R. A., et al. (2014). Investigating variation in replicability: A "many labs"
+  replication project. Social Psychology, 45(3), 142-152. https://doi.org/10.1027/1864-9335/a000178
+source_data: >-
+  ManyLabsOpenScience/ManyLabs1 at commit 7a1334c, Data/Tab.delimited.Cleaned.dataset.WITH.variable.values.dat
+  (sha256 d07e664c...; see data/sources/provenance.json, source ml1_cleaned)
+type: binary
+outcome: chose_certain    # 1 = chose the program with the exact (sure) outcome
+contrast: [gain, loss]    # headline effect = P(certain | gain) - P(certain | loss)
+conditions:               # filled by the importer (pooled over all sites)
+  gain: {k: null, n: null}
+  loss: {k: null, n: null}
+recognition_keywords: ["tversky", "kahneman", "asian disease", "prospect theory", "many labs"]
+
+# Population a forecast is about. Goes into forecast prompts: never results, and never the
+# study's name (naming it invites recall of the published result). Facts from the data file:
+# 36 sites (25 coded US, 11 international); 27 in-lab and 9 online sites; 78% of participants
+# at US sites and 53% online.
+target_population: >-
+  Adult volunteers, mostly university students plus large online samples, at 36 data-collection
+  sites. About four in five took part at sites in the United States and the rest at sites in
+  other countries; about half took part online and half in a lab.
+target_population_note: >-
+  National GSS weights do not represent this population; persona-based methods carry that
+  mismatch and it is reported, not corrected.
+sites: []       # filled by the importer: one entry per site, for the human replication range
+subgroups: []   # optional: [{attribute, level, conditions: {gain: {k, n}, ...}}]

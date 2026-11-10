@@ -1,0 +1,24 @@
+# Import spec for the HOLD-OUT benchmark: Many Labs 2, Trolley Dilemma 2 (Hauser.4, global).
+# Mapping from the ML2 key table (unique.id 47) and verified row by row (checks
+# ml2_hauser4_mapping, ml2_hauser4_results). The command prints sample sizes only.
+#   sim import-benchmark --task holdout \
+#     --raw data/raw/ml2_hauser4/Hauser4_ManyLabs2_CLEAN_CASE.csv \
+#     --spec data/benchmarks/import_specs/manylabs2_hauser4.yaml
+source: >-
+  Many Labs 2 (Klein et al., 2018), Hauser.4 global CLEAN_CASE file,
+  ManyLabsOpenScience/ManyLabs2 at commit acef63f (mirrors OSF 8cd4r)
+base: data/benchmarks/templates/holdout_hauser4.yaml
+accepted_raw_sha256:
+  a5a83b98cba009ee462afa1ed5c3d34395da143a3a1f8d78bf4d7ce45e012f90: ml2_hauser4_clean
+condition_column: factor
+condition_values: {GreaterGood: greater_good, SideEffect: side_effect}
+outcome_column: variable
+success_values: ["Yes"]   # = raw code 1 of haus3.1 / haus4.1
+failure_values: ["No"]    # = raw code 2
+site_column: source
+min_site_n: 15            # ML2's Nmin.cond for site-level analyses
+# Published analysis set: every row of the CLEAN_CASE file (N = 7,923), as in the published
+# results. The preregistered 4-second exclusion was not applied there (malformed key-table
+# filter); manylabs2_hauser4_4s.yaml applies it as a sealed sensitivity benchmark.
+include: {case.include: "TRUE"}
+signoff: null

@@ -1,0 +1,193 @@
+study_id: fyt3-silicon-subjects
+seed: 20261012
+
+models:
+  - id: opus55
+    provider: anthropic
+    model: claude-opus-5-5
+    max_tokens: 16000
+    effort: medium
+    training_cutoff: null
+  - id: sonnet55
+    provider: anthropic
+    model: claude-sonnet-5-5
+    max_tokens: 16000
+    effort: medium
+    training_cutoff: null
+
+tasks:
+  - id: framing
+    split: development
+    exposure: >-
+      The framing materials and published direction of the effect were known during prompt design. The human counts were subsequently imported from the Many Labs 1 participant data.
+    kind: framing
+    stimuli: data/stimuli/framing.yaml
+    benchmark: data/benchmarks/framing_manylabs1.yaml
+    counterbalance_option_order: true
+    materials_first_public: "1981-01-30"
+  - id: obedience
+    split: development
+    exposure: >-
+      Burger's published percentages (70.0% base, 63.3% modeled refusal) informed the 150-volt endpoint, inclusion of the second condition and the power analysis.
+    kind: obedience
+    stimuli: data/stimuli/obedience.yaml
+    benchmark: data/benchmarks/obedience_burger2009.yaml
+    materials_first_public: "2009-01-01"
+    confirmatory_test: false
+  - id: holdout
+    split: evaluation
+    exposure: >-
+      The published whole-percent permissibility rates and sample size were known before freezing. The 2007 paper reports the original percentages and supplied the stimuli. Pass/fail checks verified the replication without displaying individual outcomes. The imported benchmark is sealed. The reported values did not inform prompt, persona, model or analysis choices. The public studies may appear in model training data, so the design includes contamination probes.
+    kind: vignette
+    stimuli: data/stimuli/trolley_hauser2007.yaml
+    benchmark: data/benchmarks/holdout_hauser4.yaml
+    counterbalance_option_order: true
+    materials_first_public: "2007-01-01"
+
+personas:
+  n_profiles: 50
+  file: data/personas/profiles_v1.jsonl
+  attributes:
+    - name: age
+      levels: {"18-29 years old": 0.20, "30-44 years old": 0.26, "45-64 years old": 0.33, "65 or older": 0.21}
+    - name: gender
+      levels: {woman: 0.51, man: 0.49}
+    - name: education
+      levels: {"high school or less": 0.37, "some college or associate degree": 0.25, "bachelor's degree": 0.23, "graduate degree": 0.15}
+    - name: race_ethnicity
+      levels: {White: 0.59, "Hispanic or Latino": 0.19, Black: 0.12, Asian: 0.06, "multiracial or other": 0.04}
+    - name: region_of_the_US
+      levels: {Northeast: 0.17, Midwest: 0.21, South: 0.38, West: 0.24}
+
+survey_personas:
+  source: General Social Survey (NORC)
+  raw_file: data/survey/raw/GSS2022.dta
+  file: data/personas/gss_respondents_v1.jsonl
+  year: 2022
+  weight_column: wtssps
+  n_profiles: 50
+  sampling: pps
+  variables:
+    - {name: age, columns: [age], kind: age, group: demographic}
+    - {name: sex, columns: [sex], group: demographic}
+    - name: race_ethnicity
+      group: demographic
+      columns: [race, hispanic]
+      kind: race_ethnicity
+      labels:
+        "white (not hispanic)": "White (not Hispanic)"
+        "black (not hispanic)": "Black (not Hispanic)"
+        "other (not hispanic)": "another race (not Hispanic)"
+        "white": "White"
+        "black": "Black"
+        "other": "another race"
+    - {name: highest_degree, columns: [degree], group: demographic}
+    - name: region_of_the_US
+      group: demographic
+      columns: [region]
+      labels:
+        "new england": "New England (Northeast)"
+        "middle atlantic": "Middle Atlantic (Northeast)"
+        "e. nor. central": "East North Central (Midwest)"
+        "w. nor. central": "West North Central (Midwest)"
+        "south atlantic": "South Atlantic (South)"
+        "e. sou. central": "East South Central (South)"
+        "w. sou. central": "West South Central (South)"
+        "mountain": "Mountain (West)"
+        "pacific": "Pacific (West)"
+    - {name: marital_status, columns: [marital], group: demographic}
+    - {name: work_status, columns: [wrkstat], group: demographic}
+    - name: political_party
+      columns: [partyid]
+      group: survey_response
+      labels: {"independent (neither, no response)": "independent (leaning to neither party)"}
+    - {name: political_views, columns: [polviews], group: survey_response}
+    - {name: religion, columns: [relig], group: demographic}
+    - {name: religious_service_attendance, columns: [attend], group: survey_response}
+    - {name: total_family_income, columns: [income16], group: demographic}
+    - name: born_in_the_US
+      group: demographic
+      columns: [born]
+      labels: {"yes": "yes", "no": "no, born outside the US"}
+    - {name: type_of_place_lived_in, columns: [xnorcsiz], group: demographic}
+    - {name: number_of_children, columns: [childs], kind: number, group: demographic}
+    - {name: people_in_household, columns: [hompop], kind: number, group: demographic}
+    - {name: time_in_military_service, columns: [vetyears], group: demographic}
+    - {name: social_class_self_identified, columns: [class], group: survey_response}
+    - {name: self_rated_health, columns: [health], group: survey_response}
+    - {name: trust_in_other_people, columns: [trust], group: survey_response}
+
+arms:
+  - id: baseline
+    persona: false
+    n_per_cell: 100
+    n_per_cell_by_task: {framing: 800, holdout: 800}
+    role: primary
+  - id: persona
+    persona: true
+    replicates_per_profile: 2
+    role: secondary
+  - id: survey_persona
+    persona: true
+    persona_source: survey
+    replicates_per_profile: 2
+    role: secondary
+  - id: survey_persona_demog
+    persona: true
+    persona_source: survey
+    persona_fields: demographic_only
+    replicates_per_profile: 2
+    tasks: [framing, holdout]
+    role: secondary
+  - id: design_aware
+    persona: false
+    n_per_cell: 100
+    design_disclosure: true
+    tasks: [framing, holdout]
+    role: secondary
+  - id: population_forecast
+    method: population_forecast
+    persona: false
+    n_per_cell: 10
+    tasks: [framing, holdout]
+    role: secondary
+  - id: population_forecast_design
+    method: population_forecast
+    persona: false
+    n_per_cell: 10
+    design_disclosure: true
+    tasks: [framing, holdout]
+    role: secondary
+  - id: persona_forecast_survey
+    method: persona_forecast
+    persona: true
+    persona_source: survey
+    replicates_per_profile: 1
+    tasks: [framing, holdout]
+    role: secondary
+  - id: persona_forecast_survey_demog
+    method: persona_forecast
+    persona: true
+    persona_source: survey
+    persona_fields: demographic_only
+    replicates_per_profile: 1
+    tasks: [framing, holdout]
+    role: secondary
+  - id: paraphrase
+    persona: false
+    n_per_cell: 50
+    prompt_variants: paraphrases
+    role: sensitivity
+
+analysis:
+  alpha: 0.05
+  margin_proportion: 0.10
+  margin_cohens_h: 0.20
+  margin_smd: 0.20
+  multiple_comparisons: holm
+  bootstrap_iterations: 5000
+
+runner:
+  concurrency: 8
+  max_attempts: 6
+  request_timeout_s: 600

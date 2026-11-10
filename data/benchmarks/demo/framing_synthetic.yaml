@@ -1,0 +1,28 @@
+id: manylabs1_gain_loss_framing
+citation: >-
+  Klein, R. A., et al. (2014). Investigating variation in replicability: A "many labs"
+  replication project. Social Psychology, 45(3), 142-152. https://doi.org/10.1027/1864-9335/a000178
+source_data: "Many Labs 1 OSF project (aggregate data file) - record exact file + version used"
+verified: false   # SYNTHETIC numbers for the offline demo only. Never cite.
+synthetic: true
+type: binary
+outcome: chose_certain    # 1 = chose the sure option
+contrast: [gain, loss]    # headline effect = P(certain | gain) - P(certain | loss)
+conditions:
+  gain: {k: 720, n: 1000}   # SYNTHETIC
+  loss: {k: 420, n: 1000}   # SYNTHETIC
+recognition_keywords: ["tversky", "kahneman", "asian disease", "prospect theory", "many labs"]
+
+# Population a forecast is about. Goes into forecast prompts: never results, and never the
+# study's name (naming it invites recall of the published result).
+target_population: >-
+  Adult volunteers from university participant pools and online samples recruited at many
+  research sites, most of them in the United States.
+target_population_note: >-
+  VERIFY against Klein et al. (2014): number of samples, countries, and the online/in-lab mix.
+  National GSS weights do not represent this population; persona-based methods carry that
+  mismatch and it is reported, not corrected.
+# Optional, for the human replication range: one entry per site with per-condition k/n.
+sites: []
+# Optional, for subgroup evaluation: [{attribute, level, conditions: {gain: {k, n}, ...}}]
+subgroups: []

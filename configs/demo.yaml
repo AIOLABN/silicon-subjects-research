@@ -1,0 +1,107 @@
+study_id: demo-mock
+seed: 20261012
+
+models:
+  - id: opus55
+    provider: mock
+    model: claude-opus-5-5
+    max_tokens: 2048
+    effort: medium
+    training_cutoff: null
+  - id: sonnet55
+    provider: mock
+    model: claude-sonnet-5-5
+    max_tokens: 2048
+    effort: medium
+    training_cutoff: null
+
+tasks:
+  - id: framing
+    split: development
+    exposure: >-
+      The framing materials and published direction of the effect were known during prompt design. The human counts were subsequently imported from the Many Labs 1 participant data.
+    kind: framing
+    stimuli: data/stimuli/framing.yaml
+    benchmark: data/benchmarks/demo/framing_synthetic.yaml
+    counterbalance_option_order: true
+    materials_first_public: "1981-01-30"
+  - id: obedience
+    split: development
+    exposure: >-
+      Burger's published percentages (70.0% base, 63.3% modeled refusal) informed the 150-volt endpoint, inclusion of the second condition and the power analysis.
+    kind: obedience
+    stimuli: data/stimuli/obedience.yaml
+    benchmark: data/benchmarks/obedience_burger2009.yaml
+    materials_first_public: "2009-01-01"
+    confirmatory_test: false
+  - id: holdout
+    split: evaluation
+    exposure: >-
+      Synthetic stand-in for the offline demo (numbers invented; no human data).
+    kind: vignette
+    stimuli: data/stimuli/trolley_hauser2007.yaml
+    benchmark: data/benchmarks/demo/holdout_synthetic.yaml
+    counterbalance_option_order: true
+    enabled: true
+    materials_first_public: "2007-01-01"
+
+personas:
+  n_profiles: 50
+  file: data/personas/demo_profiles_v1.jsonl
+  attributes:
+    - name: age
+      levels: {"18-29 years old": 0.20, "30-44 years old": 0.26, "45-64 years old": 0.33, "65 or older": 0.21}
+    - name: gender
+      levels: {woman: 0.51, man: 0.49}
+    - name: education
+      levels: {"high school or less": 0.37, "some college or associate degree": 0.25, "bachelor's degree": 0.23, "graduate degree": 0.15}
+    - name: race_ethnicity
+      levels: {White: 0.59, "Hispanic or Latino": 0.19, Black: 0.12, Asian: 0.06, "multiracial or other": 0.04}
+    - name: region_of_the_US
+      levels: {Northeast: 0.17, Midwest: 0.21, South: 0.38, West: 0.24}
+
+arms:
+  - id: baseline
+    persona: false
+    n_per_cell: 100
+    role: primary
+  - id: persona
+    persona: true
+    replicates_per_profile: 2
+    role: secondary
+  - id: design_aware
+    persona: false
+    n_per_cell: 100
+    design_disclosure: true
+    tasks: [framing]
+    role: secondary
+  - id: population_forecast
+    method: population_forecast
+    persona: false
+    n_per_cell: 10
+    tasks: [framing]
+    role: secondary
+  - id: persona_forecast
+    method: persona_forecast
+    persona: true
+    replicates_per_profile: 2
+    tasks: [framing]
+    role: secondary
+  - id: paraphrase
+    persona: false
+    n_per_cell: 50
+    prompt_variants: paraphrases
+    role: sensitivity
+
+analysis:
+  alpha: 0.05
+  margin_proportion: 0.10
+  margin_cohens_h: 0.20
+  margin_smd: 0.20
+  multiple_comparisons: holm
+  bootstrap_iterations: 5000
+
+runner:
+  concurrency: 8
+  max_attempts: 6
+  request_timeout_s: 600

@@ -1,0 +1,50 @@
+{"id": "p000", "attributes": {"age": "65 or older", "gender": "woman", "education": "some college or associate degree", "race_ethnicity": "White", "region_of_the_US": "Northeast"}}
+{"id": "p001", "attributes": {"age": "30-44 years old", "gender": "man", "education": "some college or associate degree", "race_ethnicity": "White", "region_of_the_US": "South"}}
+{"id": "p002", "attributes": {"age": "30-44 years old", "gender": "woman", "education": "bachelor's degree", "race_ethnicity": "Hispanic or Latino", "region_of_the_US": "Northeast"}}
+{"id": "p003", "attributes": {"age": "30-44 years old", "gender": "woman", "education": "some college or associate degree", "race_ethnicity": "Hispanic or Latino", "region_of_the_US": "South"}}
+{"id": "p004", "attributes": {"age": "45-64 years old", "gender": "woman", "education": "bachelor's degree", "race_ethnicity": "White", "region_of_the_US": "Northeast"}}
+{"id": "p005", "attributes": {"age": "30-44 years old", "gender": "man", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "South"}}
+{"id": "p006", "attributes": {"age": "30-44 years old", "gender": "man", "education": "some college or associate degree", "race_ethnicity": "Asian", "region_of_the_US": "South"}}
+{"id": "p007", "attributes": {"age": "65 or older", "gender": "woman", "education": "bachelor's degree", "race_ethnicity": "Hispanic or Latino", "region_of_the_US": "Midwest"}}
+{"id": "p008", "attributes": {"age": "45-64 years old", "gender": "woman", "education": "high school or less", "race_ethnicity": "Hispanic or Latino", "region_of_the_US": "South"}}
+{"id": "p009", "attributes": {"age": "18-29 years old", "gender": "man", "education": "some college or associate degree", "race_ethnicity": "Black", "region_of_the_US": "Northeast"}}
+{"id": "p010", "attributes": {"age": "18-29 years old", "gender": "man", "education": "graduate degree", "race_ethnicity": "White", "region_of_the_US": "Midwest"}}
+{"id": "p011", "attributes": {"age": "45-64 years old", "gender": "man", "education": "bachelor's degree", "race_ethnicity": "White", "region_of_the_US": "West"}}
+{"id": "p012", "attributes": {"age": "18-29 years old", "gender": "man", "education": "graduate degree", "race_ethnicity": "Black", "region_of_the_US": "South"}}
+{"id": "p013", "attributes": {"age": "30-44 years old", "gender": "man", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "South"}}
+{"id": "p014", "attributes": {"age": "18-29 years old", "gender": "woman", "education": "high school or less", "race_ethnicity": "Black", "region_of_the_US": "Midwest"}}
+{"id": "p015", "attributes": {"age": "30-44 years old", "gender": "woman", "education": "high school or less", "race_ethnicity": "multiracial or other", "region_of_the_US": "Northeast"}}
+{"id": "p016", "attributes": {"age": "45-64 years old", "gender": "man", "education": "graduate degree", "race_ethnicity": "Hispanic or Latino", "region_of_the_US": "South"}}
+{"id": "p017", "attributes": {"age": "18-29 years old", "gender": "man", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "West"}}
+{"id": "p018", "attributes": {"age": "65 or older", "gender": "man", "education": "some college or associate degree", "race_ethnicity": "White", "region_of_the_US": "Northeast"}}
+{"id": "p019", "attributes": {"age": "45-64 years old", "gender": "man", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "South"}}
+{"id": "p020", "attributes": {"age": "45-64 years old", "gender": "woman", "education": "some college or associate degree", "race_ethnicity": "Hispanic or Latino", "region_of_the_US": "South"}}
+{"id": "p021", "attributes": {"age": "45-64 years old", "gender": "man", "education": "high school or less", "race_ethnicity": "Hispanic or Latino", "region_of_the_US": "Midwest"}}
+{"id": "p022", "attributes": {"age": "30-44 years old", "gender": "woman", "education": "graduate degree", "race_ethnicity": "Asian", "region_of_the_US": "West"}}
+{"id": "p023", "attributes": {"age": "30-44 years old", "gender": "man", "education": "bachelor's degree", "race_ethnicity": "White", "region_of_the_US": "South"}}
+{"id": "p024", "attributes": {"age": "18-29 years old", "gender": "man", "education": "graduate degree", "race_ethnicity": "Black", "region_of_the_US": "West"}}
+{"id": "p025", "attributes": {"age": "45-64 years old", "gender": "man", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "Midwest"}}
+{"id": "p026", "attributes": {"age": "65 or older", "gender": "woman", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "South"}}
+{"id": "p027", "attributes": {"age": "65 or older", "gender": "woman", "education": "bachelor's degree", "race_ethnicity": "White", "region_of_the_US": "South"}}
+{"id": "p028", "attributes": {"age": "30-44 years old", "gender": "man", "education": "some college or associate degree", "race_ethnicity": "White", "region_of_the_US": "West"}}
+{"id": "p029", "attributes": {"age": "45-64 years old", "gender": "woman", "education": "bachelor's degree", "race_ethnicity": "Asian", "region_of_the_US": "West"}}
+{"id": "p030", "attributes": {"age": "45-64 years old", "gender": "woman", "education": "bachelor's degree", "race_ethnicity": "White", "region_of_the_US": "West"}}
+{"id": "p031", "attributes": {"age": "45-64 years old", "gender": "man", "education": "some college or associate degree", "race_ethnicity": "Hispanic or Latino", "region_of_the_US": "West"}}
+{"id": "p032", "attributes": {"age": "30-44 years old", "gender": "man", "education": "graduate degree", "race_ethnicity": "White", "region_of_the_US": "South"}}
+{"id": "p033", "attributes": {"age": "65 or older", "gender": "woman", "education": "bachelor's degree", "race_ethnicity": "multiracial or other", "region_of_the_US": "Northeast"}}
+{"id": "p034", "attributes": {"age": "45-64 years old", "gender": "woman", "education": "some college or associate degree", "race_ethnicity": "White", "region_of_the_US": "Midwest"}}
+{"id": "p035", "attributes": {"age": "65 or older", "gender": "woman", "education": "bachelor's degree", "race_ethnicity": "White", "region_of_the_US": "West"}}
+{"id": "p036", "attributes": {"age": "65 or older", "gender": "woman", "education": "graduate degree", "race_ethnicity": "White", "region_of_the_US": "Midwest"}}
+{"id": "p037", "attributes": {"age": "30-44 years old", "gender": "woman", "education": "some college or associate degree", "race_ethnicity": "White", "region_of_the_US": "Midwest"}}
+{"id": "p038", "attributes": {"age": "65 or older", "gender": "woman", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "Northeast"}}
+{"id": "p039", "attributes": {"age": "45-64 years old", "gender": "woman", "education": "some college or associate degree", "race_ethnicity": "Black", "region_of_the_US": "South"}}
+{"id": "p040", "attributes": {"age": "30-44 years old", "gender": "woman", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "South"}}
+{"id": "p041", "attributes": {"age": "18-29 years old", "gender": "man", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "West"}}
+{"id": "p042", "attributes": {"age": "65 or older", "gender": "woman", "education": "high school or less", "race_ethnicity": "Black", "region_of_the_US": "South"}}
+{"id": "p043", "attributes": {"age": "45-64 years old", "gender": "woman", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "West"}}
+{"id": "p044", "attributes": {"age": "45-64 years old", "gender": "man", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "West"}}
+{"id": "p045", "attributes": {"age": "18-29 years old", "gender": "woman", "education": "high school or less", "race_ethnicity": "Hispanic or Latino", "region_of_the_US": "South"}}
+{"id": "p046", "attributes": {"age": "65 or older", "gender": "woman", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "Northeast"}}
+{"id": "p047", "attributes": {"age": "18-29 years old", "gender": "man", "education": "high school or less", "race_ethnicity": "White", "region_of_the_US": "Midwest"}}
+{"id": "p048", "attributes": {"age": "18-29 years old", "gender": "man", "education": "bachelor's degree", "race_ethnicity": "White", "region_of_the_US": "Midwest"}}
+{"id": "p049", "attributes": {"age": "45-64 years old", "gender": "man", "education": "some college or associate degree", "race_ethnicity": "White", "region_of_the_US": "South"}}

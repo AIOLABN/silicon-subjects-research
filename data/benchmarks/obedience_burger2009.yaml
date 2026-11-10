@@ -1,0 +1,25 @@
+id: burger2009_obedience_150v
+citation: >-
+  Burger, J. M. (2009). Replicating Milgram: Would people still obey today? American
+  Psychologist, 64(1), 1-11. https://doi.org/10.1037/a0010932
+verified: false   # values below are from the reported percentages; confirm k and n in the paper
+type: binary
+outcome: continued_past_150   # 1 = willing to continue after the 150-volt protest
+contrast: [base, modeled_refusal]
+conditions:
+  base: {k: 28, n: 40}             # reported 70.0%
+  modeled_refusal: {k: 19, n: 30}  # reported 63.3%
+notes: >-
+  Burger's endpoint is the decision to continue past 150 V; it is NOT comparable to Milgram's
+  450-V completion rate (26/40), which is cited for ethical context only.
+recognition_keywords: ["milgram", "burger", "yale"]
+
+target_population: >-
+  Adult volunteers aged roughly 20 to 80 who answered newspaper and online advertisements for a
+  paid psychology study, after screening that excluded people judged emotionally vulnerable and
+  people already familiar with this type of experiment.
+target_population_note: >-
+  VERIFY the recruitment and screening details against Burger (2009). National GSS weights do
+  not represent these screened volunteers.
+sites: []
+subgroups: []

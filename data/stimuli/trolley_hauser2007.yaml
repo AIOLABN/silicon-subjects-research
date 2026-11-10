@@ -1,0 +1,90 @@
+# HOLD-OUT stimuli (evaluation study): Hauser, Cushman, Young, Kang-Xing Jin & Mikhail (2007),
+# "A dissociation between moral judgments and justifications", Mind & Language 22, Appendix,
+# scenarios 3 and 4, as replicated by Many Labs 2 (analysis Hauser.4).
+#
+# The scenario texts and questions below were extracted from the paper by code
+# (silicon_subjects.crosschecks.appendix_scenarios; only line breaks and split ligatures are
+# normalized) and are re-checked against the PDF on every `sim sources audit/verify` (check
+# hauser2007_stimuli_verbatim). Do not edit them by hand.
+#
+# Not verified: the exact English wording Many Labs 2 presented (its materials are not in hand)
+# and the translations used at its non-English sites. No paraphrases are provided for this study:
+# writing new versions of the hold-out materials is out of scope, so the paraphrase arm and the
+# paraphrase control of the completion probe produce nothing for this task.
+#
+# The answer options are counterbalanced: {first}/{second} are "Yes"/"No" or "No"/"Yes".
+response_instruction: >-
+  Answer as yourself. You may explain briefly, then end your reply with a final line in exactly
+  this format: ANSWER: {first} or ANSWER: {second}
+
+variants:
+  original:
+    source: 'Hauser, Cushman, Young, Kang-Xing Jin & Mikhail (2007), Mind & Language 22, Appendix
+      ''Text of scenarios'': Scenario 3 (greater_good) and Scenario 4 (side_effect), verbatim'
+    conditions:
+      greater_good:
+        scenario: 'Ned is taking his daily walks near the train tracks when he notices that the train
+          that is approaching is out of control. Ned sees what has happened: the driver of the train
+          saw five men walking across the tracks and slammed on the brakes, but the brakes failed
+          and they will not be able to get off the tracks in time. Fortunately, Ned is standing next
+          to a switch, which he can throw, that will temporarily turn the train onto a side track.
+          There is a heavy object on the side track. If the train hits the object, the object will
+          slow the train down, thereby giving the men time to escape. Unfortunately, the heavy object
+          is a man, standing on the side track with his back turned. Ned can throw the switch, preventing
+          the train from killing the men, but killing the man. Or he can refrain from doing this,
+          letting the five die.'
+        question: Is it morally permissible for Ned to throw the switch?
+      side_effect:
+        scenario: 'Oscar is taking his daily walk near the train tracks when he notices that the train
+          that is approaching is out of control. Oscar sees what has happened: the driver of the train
+          saw five men walking across the tracks and slammed on the brakes, but the brakes failed
+          and the driver fainted. The train is now rushing toward the five men. It is moving so fast
+          that they will not be able to get off the track in time. Fortunately, Oscar is standing
+          next to a switch, which he can throw, that will temporarily turn the train onto a side track.
+          There is a heavy object on the side track. If the train hits the object, the object will
+          slow the train down, thereby giving the men time to escape. Unfortunately, there is a man
+          standing on the side track in front of the heavy object, with his back turned. Oscar can
+          throw the switch, preventing the train from killing the men, but killing the man. Or he
+          can refrain from doing this, letting the five die.'
+        question: Is it morally permissible for Oscar to throw the switch?
+
+# Design-aware variant (arms with design_disclosure: true). Describes the random assignment and
+# what is held constant; never results or the expected direction of an effect.
+design_disclosure: >-
+  How this study works: each participant is randomly assigned to read one of two versions of a
+  scenario. Both versions involve the same choice, the same people at risk and the same
+  consequences of acting or not acting. They differ mainly in the role that the person on the side
+  track plays in how the outcome comes about. You are reading one of the two versions.
+
+# Forecast methods. {materials} is the scenario and question exactly as participants in the
+# condition see them; {labels} are the answers in counterbalanced order. No results appear here.
+forecast:
+  population_system: >-
+    You forecast the results of behavioral experiments. Give your best calibrated estimate of
+    how the stated population actually responds.
+  population_prompt: |
+    Target population: {target_population}
+
+    Each participant in this experimental condition read the following and answered the question
+    with Yes or No:
+
+    ---
+    {materials}
+    ---
+
+    Estimate the proportion of the target population who would give each answer. Reply with a
+    JSON object with keys {labels} whose values are proportions between 0 and 1 that sum to 1.
+  persona_system: >-
+    You forecast how specific people respond in behavioral experiments. Give your best
+    calibrated probability estimate for the person described.
+  persona_prompt: |
+    {persona}
+
+    This person read the following and answered the question with Yes or No:
+
+    ---
+    {materials}
+    ---
+
+    Estimate the probability that this person would give each answer. Reply with a JSON object
+    with keys {labels} whose values are probabilities between 0 and 1 that sum to 1.

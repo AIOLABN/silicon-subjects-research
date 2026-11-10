@@ -1,0 +1,38 @@
+# Hand-written part of the HOLD-OUT (evaluation) benchmark. The importer adds the human counts
+# from the Many Labs 2 Hauser.4 data and writes ../holdout_hauser4.yaml.
+#
+# SEALED: the generated file holds evaluation outcomes. Do not open it, print it or use it while
+# developing prompts, personas, models or analysis choices. The analysis reads it only for a
+# verified confirmatory run (or an explicit, labeled reanalysis) after `sim freeze`.
+id: manylabs2_hauser4_trolley_dilemma_2
+citation: >-
+  Klein, R. A., et al. (2018). Many Labs 2: Investigating variation in replicability across
+  samples and settings. Advances in Methods and Practices in Psychological Science, 1(4),
+  443-490. https://doi.org/10.1177/2515245918810225 (replication of Hauser, Cushman, Young,
+  Kang-Xing Jin & Mikhail, 2007, Mind & Language, 22, 1-21, scenarios 3 and 4)
+source_data: >-
+  ManyLabsOpenScience/ManyLabs2 at commit acef63f, OSFdata/Trolley Dilemma 2 (Hauser et al.,
+  2007)/Hauser.4/Global/Data/Hauser_4_study_global_include_all_CLEAN_CASE.csv (sha256
+  a5a83b98...; see data/sources/provenance.json, source ml2_hauser4_clean)
+type: binary
+outcome: judged_permissible   # 1 = answered Yes to "Is it morally permissible for <name> to throw the switch?"
+# Headline effect = P(permissible | side effect) - P(permissible | greater good): the direction
+# the original study predicted (principle of double effect), fixed before any model output.
+contrast: [side_effect, greater_good]
+conditions:   # filled by the importer
+  greater_good: {k: null, n: null}   # "Ned": the man is the heavy object (harm as a means)
+  side_effect: {k: null, n: null}    # "Oscar": the man stands in front of the heavy object
+recognition_keywords: ["hauser", "cushman", "mikhail", "many labs", "moral sense test"]
+
+# For forecast prompts: no results, no study names and no percentages (numbers can anchor a
+# numeric forecast). Facts from the data file (non-outcome
+# columns): 61 sites in 27 countries, 12 survey languages (71% English), 76% of participants in
+# samples coded WEIRD, about half online and half in a lab or classroom.
+target_population: >-
+  Adult volunteers, mostly university students, at 61 data-collection sites in 27 countries.
+  Somewhat under half took part in the United States; most of the rest took part in Europe,
+  India, Australia, New Zealand or Latin America. About seven in ten answered in English and the
+  rest in one of 11 other languages. About half took part online and half in a lab or classroom.
+sites: []      # filled by the importer (sites with at least 15 per condition, as in ML2)
+subgroups: []
+sealed_outcomes: true

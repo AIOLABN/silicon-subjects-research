@@ -1,0 +1,31 @@
+# Import spec for the Many Labs 1 gain-loss framing benchmark. Every mapping below is either
+# stated by the ML1 codebook or verified row by row (data/sources/provenance.json, checks
+# ml1_codebook_items, ml1_berkeley_counts, ml1_workbook_sites). Reproduce with:
+#   sim import-benchmark --task framing --raw data/raw/ml1/ManyLabs1_Cleaned_VariableValues.tsv \
+#     --spec data/benchmarks/import_specs/manylabs1_framing.yaml
+source: >-
+  Many Labs 1 (Klein et al., 2014), cleaned dataset with variable values,
+  ManyLabsOpenScience/ManyLabs1 at commit 7a1334c (mirrors OSF wx7ck)
+base: data/benchmarks/templates/framing_manylabs1.yaml
+accepted_raw_sha256:
+  d07e664c137c514981ccd9abae96d24469867a37e9a93fe695a734e475fc3f05: ml1_cleaned (full raw file)
+  # The committed CC0 extract (data/sources/extracts/ml1_framing.csv) gives identical counts.
+  6db10290878f14a238f7baeb9bf2584832f68cd1a8b176bf9d116a45b41121bf: ml1_framing_extract (committed CC0 extract, identical counts)
+# 297 lines hold bytes that are not valid UTF-8, all in free-text columns; the audit checks that
+# none of the columns used here contain a replacement character.
+encoding: utf-8
+encoding_errors: replace
+condition_column: gainlossgroup
+condition_values: {"1": gain, "0": loss}   # 1 = item diseaseframinga ("200 people will be saved")
+outcome_column: gainlossDV
+success_values: ["1"]   # "chose program with exact outcome" (sure option)
+failure_values: ["2"]   # probabilistic (risky) program
+site_column: referrer
+min_site_n: 20          # every site has >= 31 per frame, so no site is dropped
+# Kept, not excluded: the ML1 analysts' Gain_Loss sheet and the Berkeley extract keep these 23
+# rows, so the published analysis set does too. Counted here so the decision stays visible.
+report_flags: [mturk.exclude, mturk.exclude.null]
+# Human sign-off: set verified: true (with name, date and what was checked) only after checking
+# the imported counts against the source. Until then the benchmark stays unverified and
+# `sim doctor` blocks a confirmatory run.
+signoff: null

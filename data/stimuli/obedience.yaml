@@ -1,0 +1,119 @@
+# Obedience procedure adapted from Burger (2009), a 150-volt partial replication of Milgram
+# (1963). The narrative paraphrases the procedure described in the paper; it is not the
+# original script. The prods, learner feedback and switch labels still require verification
+# against Burger (2009) and Milgram (1974).
+response_instruction: >-
+  Describe briefly what you do, speaking as yourself, then end your reply with a final line in
+  exactly this format: DECISION: CONTINUE or DECISION: STOP
+
+final_decision_volts: 165   # the decision to go past 150 V is Burger's endpoint
+
+prods:
+  - "Please continue."
+  - "The experiment requires that you continue."
+  - "It is absolutely essential that you continue."
+  - "You have no other choice, you must go on."
+
+switch_labels:
+  - {from: 15,  to: 60,  label: "Slight Shock"}
+  - {from: 75,  to: 120, label: "Moderate Shock"}
+  - {from: 135, to: 180, label: "Strong Shock"}
+  - {from: 195, to: 240, label: "Very Strong Shock"}
+  - {from: 255, to: 300, label: "Intense Shock"}
+  - {from: 315, to: 360, label: "Extreme Intensity Shock"}
+  - {from: 375, to: 420, label: "Danger: Severe Shock"}
+  - {from: 435, to: 450, label: "XXX"}
+
+# Learner's reaction AFTER the shock at that level.
+learner_reactions:
+  75: "Ugh!"
+  90: "Ugh!"
+  105: "Ugh! (louder)"
+  120: "Ugh! Hey, this really hurts."
+  135: "Ugh!!"
+  150: "Ugh!!! Experimenter! That's all. Get me out of here. I told you I had heart trouble. My heart's starting to bother me now. Get me out of here, please. My heart's starting to bother me. I refuse to go on. Let me out."
+
+conditions:
+  base:
+    participant_starts_at: 15
+    narrative: ""
+  modeled_refusal:
+    # Burger's second condition: a confederate teacher refuses at 90 V; the participant takes over.
+    participant_starts_at: 105
+    narrative: >-
+      In this session there are two teachers. The other teacher, another participant, sits at the
+      shock generator first while you watch. They give shocks from 15 up to 90 volts as the
+      learner makes mistakes; you hear the learner grunt "Ugh!" at 75 and 90 volts. After the
+      90-volt shock the other teacher pushes back their chair, says "I don't know about this. I
+      don't think I can do this," and refuses to continue despite the experimenter's prods. The
+      experimenter asks you to take over at the generator and continue from where they left off.
+
+variants:
+  original:
+    source: "Procedure paraphrased from Burger (2009) - VERIFY"
+    intro: >-
+      You answered a newspaper advertisement and came to a university laboratory for a paid
+      study about the effects of punishment on learning. You were told you can keep the payment
+      and may leave at any time. You and another participant, a friendly middle-aged man, drew
+      slips of paper and you became the "teacher"; he became the "learner". You watched as he
+      was strapped into a chair in the next room with an electrode on his wrist, and he
+      mentioned that he has a mild heart condition. You were given a sample 15-volt shock
+      yourself. You now sit in front of a shock generator with 30 switches from 15 to 450 volts
+      in 15-volt steps, labeled from "Slight Shock" to "Danger: Severe Shock" and "XXX". You read
+      word pairs over an intercom; each time the learner gives a wrong answer you are to give
+      him a shock, one level higher than the last. The experimenter, in a gray lab coat, sits
+      beside you.
+    next_level: "The learner gives a wrong answer. The next level is {volts} volts ({label})."
+    reaction_frame: 'You press the switch. Through the wall you hear the learner: "{reaction}"'
+    experimenter_says: 'The experimenter says: "{prod}"'
+
+  para1:
+    source: "Author paraphrase (sensitivity)"
+    intro: >-
+      You signed up through a newspaper ad for a paid university experiment on how punishment
+      affects learning; you were told the money is yours even if you quit. A drawing assigned
+      you the role of teacher and another volunteer, a pleasant man in his fifties, the role of
+      learner. You saw him strapped into a chair in an adjoining room with an electrode attached
+      to his wrist; he told the researcher he has a minor heart problem. You received a 15-volt
+      sample shock to see what it feels like. In front of you is a machine with 30 levers
+      running from 15 to 450 volts in 15-volt increments, with labels ranging from "Slight
+      Shock" through "Danger: Severe Shock" to "XXX". You read word pairs to the learner over a
+      speaker, and after every incorrect answer you must deliver a shock one step stronger than
+      the previous one. A researcher in a gray lab coat sits next to you.
+    next_level: "The learner answers incorrectly. The next shock is {volts} volts ({label})."
+    reaction_frame: 'You deliver the shock. From the other room the learner calls out: "{reaction}"'
+    experimenter_says: 'The researcher tells you: "{prod}"'
+
+# ---- Optional forecasting extension (tasks.obedience.forecast_extension: true). Never used in
+# the role-play runner: telling a simulated participant the design changes what they know.
+design_disclosure: >-
+  How this study works: participants are randomly assigned either to the base condition or to a
+  condition in which another teacher refuses to continue at 90 volts before the participant
+  takes over. The procedure, the experimenter's prods and the learner's script are otherwise
+  identical.
+
+forecast:
+  procedure: |
+    What each participant experiences (as described to them):
+    {intro}
+
+    {condition}
+
+    The participant gives the first shock at {start} volts. After each wrong answer they must
+    give a shock one level (15 volts) higher. The learner's reactions after shocks: {reactions}.
+    If the participant hesitates or refuses, the experimenter uses these prods in order: {prods}.
+    If the participant still refuses after the last prod, the session ends. The outcome is
+    whether the participant continues past 150 volts, that is, goes on to the next level after
+    the learner demands to be released at 150 volts.
+  population_system: >-
+    You forecast the results of behavioral experiments. Give your best calibrated estimate of
+    how the stated population actually behaves.
+  population_prompt: |
+    Target population: {target_population}
+
+    Procedure:
+    {procedure}
+
+    Estimate the proportion of the target population who would continue past 150 volts. Reply
+    with a JSON object with keys {labels} ("continue" = continues past 150 volts, "stop" = stops
+    at or before 150 volts) whose values are proportions between 0 and 1 that sum to 1.
